@@ -19,7 +19,7 @@ Keep `OPENAI_API_KEY` in the ignored `.env.local` at the repository root. The pa
 
 ## Use
 
-1. Open the roster from the menu-bar icon. The current drawer shows version 0.3.
+1. Open the roster from the menu-bar icon. The menu opens a transparent row of small named companions. Right-click it for Stop all or Quit.
 2. Drag a character onto a window, or click its name to attach to the topmost external window.
 3. Enter its purpose in the tab above the window and press Go. Purposes are remembered per companion and application.
 4. Click the perched dot to expand or collapse the purpose tab. Drag the dot to move it to another window.
@@ -47,3 +47,5 @@ swift test
 The packaged app is ad-hoc signed for local use, not notarized for distribution.
 
 Build 0.3 adds the perched dot and expanding window tab. If you see “Local demo provider,” quit that old process and launch the current packaged app. The drawer displays 0.3 so you can verify the running version.
+
+Version 0.6: a custom transparent status-bar panel replaces the system popover. Focus and Chill start local behavior on drop with default purposes and no typing. Explain opens its prompt. Screenshots and model requests still occur only through Go or Watch. Colour sampling excludes window shadows and stays local.

@@ -8,7 +8,7 @@ struct AttachmentLayout {
         // Share ONE window-relative anchor. Screen-clamping each panel separately
         // made the input and character drift apart on maximized windows.
         let hasRoomAbove = window.maxY + 72 <= screen.maxY
-        let seamY = hasRoomAbove ? window.maxY - 1 : window.maxY - 72
+        let seamY = hasRoomAbove ? window.maxY - 5 : window.maxY - 72
         tab = CGRect(x: tabX, y: seamY - max(0, expandedHeight - 72), width: 430, height: expandedHeight)
         dot = CGRect(x: tabX - 46, y: seamY + 9, width: 48, height: 48)
     }

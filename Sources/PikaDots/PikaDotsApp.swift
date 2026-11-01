@@ -2,14 +2,8 @@ import SwiftUI
 
 @main
 struct PikaDotsApp: App {
-    @StateObject private var controller = AppController()
-    var body: some Scene {
-        MenuBarExtra {
-            RosterView(app: controller)
-        } label: {
-            Image(nsImage: MenuBarArtwork.image).accessibilityLabel("Pika Dots")
-        }.menuBarExtraStyle(.window)
-    }
+    @NSApplicationDelegateAdaptor(StatusBarController.self) private var delegate
+    var body: some Scene { Settings { EmptyView() } }
 }
 
 final class CompanionPanel: NSPanel {
@@ -30,6 +24,7 @@ final class AttachedSession {
 @MainActor
 final class AppController: ObservableObject {
     let agents = SkillLoader.load()
+    var onAttachment: (() -> Void)?
     @Published var notice = ""
     private let responder: any AgentResponding = OpenAIResponder()
     private let monitor = SessionMonitor()
@@ -94,6 +89,17 @@ final class AppController: ObservableObject {
         dotPanel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
         sampleAppearance(state)
+        if ["focus", "chill"].contains(agent.id) {
+            let defaultPurpose = agent.id == "focus" ? "Keep me focused on this application." : "Help me take a two-minute break."
+            if state.prompt.isEmpty { state.prompt = defaultPurpose }
+            state.purpose = state.prompt
+            state.expanded = false
+            panel.orderOut(nil)
+            monitor.start(agentID: agent.id, targetApp: window.appName) { [weak state] message in
+                state?.response = message; state?.expanded = true
+            }
+        }
+        onAttachment?()
     }
 
     private func sampleAppearance(_ state: BubbleState) {

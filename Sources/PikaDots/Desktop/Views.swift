@@ -19,8 +19,6 @@ struct RosterView: View {
             }
         }
         .padding(.horizontal, 18).padding(.vertical, 12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 27, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 27, style: .continuous).strokeBorder(.white.opacity(0.18)))
         .padding(5)
         .contextMenu {
             Button("Stop all sessions", systemImage: "pause.circle") { app.stopSession() }
@@ -40,13 +38,14 @@ private struct ShelfCompanion: View {
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        DraggableDot(agent: agent, onDrop: onDrop, onClick: onClick)
-            .frame(width: 48, height: 48).padding(4)
-            .background(Color(nsColor: agent.color).opacity(hovering ? 0.13 : 0), in: Circle())
-            .overlay(alignment: .bottom) {
-                if attached { Circle().fill(Color(nsColor: agent.color)).frame(width: 4, height: 4).offset(y: 3) }
-            }
-            .offset(y: hovering && !reduceMotion ? -3 : 0)
+        VStack(spacing: 3) {
+            DraggableDot(agent: agent, onDrop: onDrop, onClick: onClick)
+                .frame(width: 36, height: 36)
+                .offset(y: hovering && !reduceMotion ? -2 : 0)
+            Text(agent.name).font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundStyle(.primary)
+                .shadow(color: Color(nsColor: .windowBackgroundColor), radius: 2)
+        }.frame(width: 48)
             .onHover { hovering = $0 }
             .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.65), value: hovering)
             .help("\(agent.name) · \(agent.summary)")
@@ -126,6 +125,7 @@ struct TaskBubble: View {
                 }.font(.system(size: 9)).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 27).padding(.top, 10).padding(.bottom, 8)
+            .frame(height: 72, alignment: .top)
             .background(WindowTabShape().fill(Color(nsColor: state.windowColor)))
             if !state.response.isEmpty {
                 ScrollView {

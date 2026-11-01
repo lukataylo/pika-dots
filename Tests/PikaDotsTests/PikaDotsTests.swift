@@ -37,7 +37,7 @@ final class AttachmentLayoutTests: XCTestCase {
         let collapsed = AttachmentLayout(window: window, screen: screen, expandedHeight: 72)
         let expanded = AttachmentLayout(window: window, screen: screen, expandedHeight: 210)
         XCTAssertEqual(collapsed.dot, expanded.dot)
-        XCTAssertEqual(collapsed.tab.minY, window.maxY - 1)
+        XCTAssertEqual(collapsed.tab.minY, window.maxY - 5)
         XCTAssertEqual(expanded.tab.maxY, collapsed.tab.maxY)
         XCTAssertEqual(expanded.dot.maxX, expanded.tab.minX + 2)
     }
