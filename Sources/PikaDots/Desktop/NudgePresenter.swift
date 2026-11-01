@@ -28,8 +28,11 @@ final class NudgePresenter {
         center.removePendingNotificationRequests(withIdentifiers: ["pika.current"])
         center.removeDeliveredNotifications(withIdentifiers: ["pika.current"])
     }
-    func show(_ message: String, agent: AgentDefinition) {
-        dismiss()
+    /// Pinned messages (an action awaiting approval) use their own identifier, so ordinary
+    /// nudges from other cats cannot replace or clear them.
+    func show(_ message: String, agent: AgentDefinition, pinned: Bool = false) {
+        if !pinned { dismiss() }
+        let identifier = pinned ? "pika.pinned." + agent.id : "pika.current"
         let text = NotificationCopy.short(message)
         task = Task { [weak self] in
             guard let self else { return }
@@ -40,10 +43,13 @@ final class NudgePresenter {
             if allowed {
                 let content = UNMutableNotificationContent()
                 content.title = agent.name; content.body = text
-                do { try await center.add(UNNotificationRequest(identifier: "pika.current", content: content, trigger: nil)) }
+                do { try await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil)) }
                 catch { fallback(text, agent: agent) }
             } else { fallback(text, agent: agent) }
         }
+    }
+    func clearPinned(_ agent: AgentDefinition) {
+        center.removeDeliveredNotifications(withIdentifiers: ["pika.pinned." + agent.id])
     }
     private func fallback(_ text: String, agent: AgentDefinition) {
         // A short transient banner if system notifications are disabled.

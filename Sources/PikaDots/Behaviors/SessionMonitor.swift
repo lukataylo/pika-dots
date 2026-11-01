@@ -19,11 +19,12 @@ final class SessionMonitor {
         self.currentApp = currentApp; self.keyboardIdle = keyboardIdle
     }
     func stop() { task?.cancel(); task = nil }
-    func start(agentID: String, targetApp: String?, targetPID: pid_t?, startedAt: Date? = nil, onMessage: @escaping @MainActor (String) -> Void) {
+    func start(agentID: String, targetApp: String?, targetPID: pid_t?, startedAt: Date? = nil, breakLength: TimeInterval? = nil,
+               onMessage: @escaping @MainActor (String) -> Void, onFinish: (@MainActor () -> Void)? = nil) {
         stop()
         // Any key press since the previous poll counts as still typing.
         let typingWindow = Double(interval.components.seconds) + Double(interval.components.attoseconds) / 1e18
-        let interval = interval, breakLength = breakLength, cooldown = cooldown
+        let interval = interval, breakLength = breakLength ?? self.breakLength, cooldown = cooldown
         let currentApp = currentApp, keyboardIdle = keyboardIdle
         task = Task {
             let start = startedAt ?? Date()
@@ -32,7 +33,8 @@ final class SessionMonitor {
                 do { try await Task.sleep(for: interval); try Task.checkCancellation() } catch { return }
                 if agentID == "chill" {
                     if Date().timeIntervalSince(start) >= breakLength {
-                        onMessage("Break complete. Ready when you are."); return
+                        onMessage("Break complete. Ready when you are.")
+                        onFinish?(); return
                     }
                     if keyboardIdle() < typingWindow, Date().timeIntervalSince(lastNudge) >= cooldown {
                         lastNudge = Date()

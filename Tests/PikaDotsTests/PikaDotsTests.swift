@@ -4,7 +4,7 @@ import XCTest
 final class PikaDotsTests: XCTestCase {
     func testBundledRosterHasDistinctNonemptySkills() {
         let agents = SkillLoader.load()
-        XCTAssertEqual(Set(agents.map(\.id)), Set(["focus", "chill", "explain"]))
+        XCTAssertEqual(Set(agents.map(\.id)), Set(["focus", "chill", "explain", "outreach"]))
         XCTAssertTrue(agents.allSatisfy { !$0.skillText.isEmpty })
     }
 
@@ -37,15 +37,50 @@ final class AttachmentLayoutTests: XCTestCase {
         let collapsed = AttachmentLayout(window: window, screen: screen, expandedHeight: 32)
         let expanded = AttachmentLayout(window: window, screen: screen, expandedHeight: 178)
         XCTAssertEqual(collapsed.dot, expanded.dot)
-        XCTAssertEqual(collapsed.tab.minY, window.maxY - 5)
+        XCTAssertEqual(collapsed.tab.minY, window.maxY, "pill rests on the window edge")
         XCTAssertEqual(expanded.tab.maxY, collapsed.tab.maxY)
         XCTAssertEqual(expanded.dot.maxX, expanded.tab.minX + 2)
     }
     func testMaximizedWindowKeepsTabOnScreen() {
         let screen = CGRect(x: -1440, y: 0, width: 1440, height: 900)
-        let layout = AttachmentLayout(window: screen, screen: screen, expandedHeight: 178)
+        let layout = AttachmentLayout(window: screen, screen: screen, expandedHeight: 32, fullScreen: screen)
+        XCTAssertTrue(layout.peeking, "full screen: hang from the top edge")
         XCTAssertTrue(screen.contains(layout.tab))
+        XCTAssertEqual(layout.dot.maxY - screen.maxY, 12, "only the paws go past the edge")
+        XCTAssertTrue(screen.contains(layout.dot.insetBy(dx: 0, dy: 6).offsetBy(dx: 0, dy: -6)))
+    }
+}
+
+final class PerchTests: XCTestCase {
+    func testPawsRestOnTheWindowEdge() {
+        let window = CGRect(x: 200, y: 100, width: 800, height: 500), screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let layout = AttachmentLayout(window: window, screen: screen, expandedHeight: 32, seat: 10.5)
+        XCTAssertEqual(layout.dot.minY + 10.5, window.maxY + 1, "drawn paws overlap the edge by 1pt")
+    }
+    private let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+    private let window = CGRect(x: 200, y: 100, width: 800, height: 500)
+    func testAnchorSlidesCatAlongTopEdgeWithinTheWindow() {
+        let left = AttachmentLayout(window: window, screen: screen, expandedHeight: 32, anchor: 0)
+        let right = AttachmentLayout(window: window, screen: screen, expandedHeight: 32, anchor: 1)
+        let middle = AttachmentLayout(window: window, screen: screen, expandedHeight: 32)
+        XCTAssertEqual(left.dot.minX, window.minX)
+        XCTAssertEqual(right.dot.maxX, window.maxX)
+        XCTAssertEqual(middle.dot.midX, window.midX)
+        XCTAssertFalse(middle.peeking)
+        XCTAssertEqual(AttachmentLayout(window: window, screen: screen, expandedHeight: 32, anchor: 7).dot, right.dot)
+    }
+    func testWindowUnderMenuBarStaysUprightInsideTopEdge() {
+        let display = CGRect(x: 0, y: 0, width: 1440, height: 930)
+        let underMenuBar = CGRect(x: 100, y: 100, width: 900, height: 790)
+        let layout = AttachmentLayout(window: underMenuBar, screen: screen, expandedHeight: 32, fullScreen: display)
+        XCTAssertFalse(layout.peeking)
+        XCTAssertEqual(layout.dot.maxY, underMenuBar.maxY)
         XCTAssertTrue(screen.contains(layout.dot))
+    }
+    func testPillFlipsLeftNearScreenEdge() {
+        let edge = AttachmentLayout(window: CGRect(x: 1100, y: 100, width: 340, height: 500), screen: screen, expandedHeight: 32, anchor: 1)
+        XCTAssertTrue(screen.contains(edge.tab))
+        XCTAssertLessThan(edge.tab.minX, edge.dot.minX)
     }
 }
 
@@ -132,6 +167,7 @@ final class CharacterArtworkTests: XCTestCase {
             let tiff = try XCTUnwrap(image.tiffRepresentation)
             let bitmap = try XCTUnwrap(NSBitmapImageRep(data: tiff))
             XCTAssertTrue(bitmap.hasAlpha, "\(id) must preserve transparency")
+            XCTAssertTrue((0.1...0.25).contains(CharacterArtwork.footInset(for: id)), "\(id) paw line")
         }
     }
 }

@@ -43,6 +43,7 @@ final class PermissionState: ObservableObject {
 }
 
 struct PermissionsView: View {
+    @AppStorage(CatVoice.defaultsKey) private var catSounds = true
     @StateObject private var permissions = PermissionState()
     let manage: () -> Void
     let showShelf: () -> Void
@@ -79,6 +80,12 @@ struct PermissionsView: View {
                 Button("Enable") { permissions.requestNotifications() }
                 Button("Settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!) }
             }
+            Toggle(isOn: $catSounds) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Cat sounds", systemImage: "speaker.wave.2").font(.headline)
+                    Text("Each cat only makes the sounds listed under “## Sounds” in its skill Markdown.").font(.caption).foregroundStyle(.secondary)
+                }
+            }.toggleStyle(.switch)
             Label("Keyboard activity only — no typed text is recorded.", systemImage: "keyboard").font(.caption)
             Text("Only the attached window is sent to OpenAI when you press Go or enable supervision. No Accessibility or Input Monitoring permission is required.").font(.caption).foregroundStyle(.secondary)
             HStack { Button("Companions & API key…", action: manage); Spacer(); Button("Restart Pika Dots") { permissions.restart() } }

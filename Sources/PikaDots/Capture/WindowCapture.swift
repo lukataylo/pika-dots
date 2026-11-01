@@ -27,7 +27,8 @@ struct WindowCapture {
         config.ignoreShadowsSingleWindow = true
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
         let bitmap = NSBitmapImageRep(cgImage: image)
-        guard let data = bitmap.representation(using: .png, properties: [:]) else {
+        // JPEG keeps uploads a few hundred KB instead of several MB of PNG, which makes requests faster and steadier.
+        guard let data = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.75]) else {
             throw PikaError.message("Could not encode the selected window.")
         }
         return data

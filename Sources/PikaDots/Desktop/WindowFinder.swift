@@ -32,6 +32,9 @@ final class DotDragView: NSView {
     var onDrop: ((NSPoint) -> Void)?
     var onClick: (() -> Void)?
     private var didDrag = false
+    private var downPoint = NSPoint.zero
+    /// Full-screen perch: the cat hangs from the top edge.
+    var upsideDown = false { didSet { if upsideDown != oldValue { needsDisplay = true } } }
     private var ghost: NSPanel?
     private var ghostDot: DotDragView?
     private var animation: Task<Void, Never>?
@@ -52,9 +55,13 @@ final class DotDragView: NSView {
         animation?.cancel()
         guard window != nil else { return }
         animation = Task { [weak self] in
+            var lively = true
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .milliseconds(24)) } catch { return }
+                // Smooth frames only while landing or springing back from a drag; slow
+                // breathing and blinking read the same at 15 fps for a fraction of the CPU.
+                do { try await Task.sleep(for: .milliseconds(lively ? 24 : 66)) } catch { return }
                 guard let self else { return }
+                lively = self.isGhost || abs(self.stretch - 1) > 0.01 || Date().timeIntervalSince(self.birth) < 1.2
                 guard self.window?.occlusionState.contains(.visible) == true else { continue }
                 self.stretch += (1 - self.stretch) * 0.12
                 self.needsDisplay = true
@@ -70,7 +77,7 @@ final class DotDragView: NSView {
         NSGraphicsContext.saveGraphicsState()
         let transform = NSAffineTransform()
         transform.translateX(by: bounds.midX, yBy: bounds.midY)
-        transform.rotate(byRadians: angle)
+        transform.rotate(byRadians: angle + (upsideDown && !isGhost ? .pi : 0))
         let sizeScale: CGFloat = isGhost ? 40.0 / 48 : min(bounds.width, bounds.height) / 48
         transform.scaleX(by: sizeScale, yBy: sizeScale)
         transform.scaleX(by: stretch * landing * breathe, yBy: landing / sqrt(stretch) / breathe)
@@ -103,7 +110,7 @@ final class DotDragView: NSView {
     override func accessibilityPerformPress() -> Bool { onClick?(); return onClick != nil }
     override func mouseDown(with event: NSEvent) {
         didDrag = false
-        lastPoint = NSEvent.mouseLocation
+        lastPoint = NSEvent.mouseLocation; downPoint = lastPoint
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 110, height: 110), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.backgroundColor = .clear; panel.isOpaque = false; panel.hasShadow = false
         panel.level = .statusBar; panel.ignoresMouseEvents = true
@@ -112,8 +119,10 @@ final class DotDragView: NSView {
         ghost = panel; ghostDot = dot
     }
     override func mouseDragged(with event: NSEvent) {
-        didDrag = true
         let p = NSEvent.mouseLocation
+        // A click with a slight wobble is still a click; only a real move is a drag.
+        guard didDrag || hypot(p.x - downPoint.x, p.y - downPoint.y) > 6 else { return }
+        didDrag = true
         let dx = p.x - lastPoint.x, dy = p.y - lastPoint.y
         if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             ghostDot?.stretch = min(2.1, 1 + hypot(dx, dy) / 35)
