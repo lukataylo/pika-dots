@@ -85,7 +85,7 @@ final class AppController: ObservableObject {
                 state.expanded.toggle()
                 self.updateAttachments()
                 if state.expanded { self.sessions[agent.id]?.panel.makeKeyAndOrderFront(nil) }
-            }))
+            }, dismiss: { [weak self] in self?.close(agent.id) }))
         panel.hasShadow = false
         panel.contentView = NSHostingView(rootView: TaskBubble(state: state,
             submit: { [weak self, weak state] in if let state { self?.submit(state) } },
@@ -94,7 +94,7 @@ final class AppController: ObservableObject {
         sessions[agent.id] = AttachedSession(state: state, panel: panel, dotPanel: dotPanel)
         position(sessions[agent.id]!, window: window)
         dotPanel.orderFrontRegardless()
-        panel.makeKeyAndOrderFront(nil)
+        if state.expanded { panel.makeKeyAndOrderFront(nil) }
         sampleAppearance(state)
         if ["focus", "chill"].contains(agent.id) {
             let defaultPurpose = agent.id == "focus" ? "Keep me focused on this application." : "Help me take a two-minute break."
@@ -135,7 +135,7 @@ final class AppController: ObservableObject {
     private func position(_ session: AttachedSession, window: WindowContext) {
         let rect = WindowFinder.appRect(window.bounds)
         let visible = (NSScreen.screens.first { $0.frame.contains(NSPoint(x: rect.midX, y: rect.midY)) } ?? NSScreen.main)?.visibleFrame ?? rect
-        let height: CGFloat = session.state.response.isEmpty ? 72 : 210
+        let height: CGFloat = session.state.response.isEmpty ? 40 : 178
         let layout = AttachmentLayout(window: rect, screen: visible, expandedHeight: height)
         if session.panel.frame != layout.tab { session.panel.setFrame(layout.tab, display: true) }
         if session.dotPanel.frame != layout.dot { session.dotPanel.setFrame(layout.dot, display: true) }

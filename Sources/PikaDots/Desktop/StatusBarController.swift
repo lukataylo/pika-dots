@@ -15,7 +15,7 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         item.button?.target = self
         item.button?.action = #selector(toggleShelf)
         self.item = item
-        let shelf = CompanionPanel(contentRect: CGRect(x: 0, y: 0, width: 220, height: 84), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let shelf = CompanionPanel(contentRect: CGRect(x: 0, y: 0, width: 178, height: 68), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         shelf.backgroundColor = .clear; shelf.isOpaque = false; shelf.hasShadow = false
         shelf.level = .popUpMenu; shelf.isReleasedWhenClosed = false
         shelf.contentView = NSHostingView(rootView: RosterView(app: app))
@@ -31,7 +31,7 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         if shelf.isVisible { shelf.orderOut(nil); return }
         let rect = window.convertToScreen(button.convert(button.bounds, to: nil))
         let screen = window.screen?.visibleFrame ?? NSScreen.main!.visibleFrame
-        shelf.setFrameOrigin(NSPoint(x: max(screen.minX, min(rect.midX - 110, screen.maxX - 220)), y: rect.minY - 84))
+        shelf.setFrameOrigin(NSPoint(x: max(screen.minX, min(rect.midX - 89, screen.maxX - 178)), y: rect.minY - 68))
         shelf.orderFrontRegardless()
     }
 }
