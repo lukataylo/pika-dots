@@ -19,13 +19,14 @@ Keep `OPENAI_API_KEY` in the ignored `.env.local` at the repository root. The pa
 
 ## Use
 
-1. Open the roster from the menu-bar icon.
+1. Open the roster from the menu-bar icon. The current drawer shows version 0.3.
 2. Drag a character onto a window, or click its name to attach to the topmost external window.
-3. Enter its purpose above the target window and press Go. The app remembers each companion's purpose per application.
-4. On the first request, allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording. Restart if macOS requests it.
-5. Go sends the task and a fresh image of only that window to OpenAI's Responses API. No background screenshots are uploaded. Window content is untrusted input, separate from the companion's instructions.
-6. Drag the attached character onto another window to move it. The overlay follows window movement/resizing, hides when another app is foreground, and returns with its target.
-7. Focus starts local app-switch reminders; Chill starts a two-minute timer. These modes replace one another. Stop all cancels requests and timers.
+3. Enter its purpose in the tab above the window and press Go. Purposes are remembered per companion and application.
+4. Click the perched dot to expand or collapse the purpose tab. Drag the dot to move it to another window.
+5. On the first request, allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording. Restart if macOS requests it.
+6. Go sends a single selected-window image and your task to OpenAI. Watch sends an immediate request and checks every 45 seconds while that target window is foreground; background or minimized targets pause checks.
+7. Watching shows a green indicator. Click Watch again, detach the dot, or choose Stop all to stop pending checks. Keyboard monitoring uses a local idle-time signal; it never records typed text, key codes, or clipboard contents.
+8. Focus starts local app-switch reminders; Chill starts a two-minute timer. These modes replace one another. Errors stop periodic watching and appear in the expanded tab.
 
 Three dots may attach to three different windows. Each window gets one dot and a purpose field. Dots stretch along the direction of dragging, spring into place, blink, and breathe; reduced-motion settings disable stretching and idle motion.
 
@@ -44,3 +45,5 @@ swift test
 ```
 
 The packaged app is ad-hoc signed for local use, not notarized for distribution.
+
+Build 0.3 adds the perched dot and expanding window tab. If you see “Local demo provider,” quit that old process and launch the current packaged app. The drawer displays 0.3 so you can verify the running version.

@@ -29,3 +29,22 @@ final class OpenAIResponseTests: XCTestCase {
         XCTAssertEqual(WindowFinder.appRect(WindowFinder.appRect(rect)), rect)
     }
 }
+
+final class AttachmentLayoutTests: XCTestCase {
+    func testResponseExpandsUpwardWithoutMovingPerchedDot() {
+        let window = CGRect(x: 100, y: 100, width: 900, height: 500)
+        let screen = CGRect(x: 0, y: 0, width: 1440, height: 1000)
+        let collapsed = AttachmentLayout(window: window, screen: screen, expandedHeight: 72)
+        let expanded = AttachmentLayout(window: window, screen: screen, expandedHeight: 210)
+        XCTAssertEqual(collapsed.dot, expanded.dot)
+        XCTAssertEqual(collapsed.tab.minY, window.maxY - 1)
+        XCTAssertEqual(expanded.tab.minY, collapsed.tab.minY)
+        XCTAssertEqual(expanded.dot.midX, window.midX)
+    }
+    func testMaximizedWindowKeepsTabOnScreen() {
+        let screen = CGRect(x: -1440, y: 0, width: 1440, height: 900)
+        let layout = AttachmentLayout(window: screen, screen: screen, expandedHeight: 210)
+        XCTAssertTrue(screen.contains(layout.tab))
+        XCTAssertTrue(screen.contains(layout.dot))
+    }
+}

@@ -3,8 +3,9 @@ import SwiftUI
 struct DraggableDot: NSViewRepresentable {
     let agent: AgentDefinition
     let onDrop: (NSPoint) -> Void
-    func makeNSView(context: Context) -> DotDragView { let v = DotDragView(color: agent.color); v.onDrop = onDrop; return v }
-    func updateNSView(_ view: DotDragView, context: Context) { view.onDrop = onDrop }
+    var onClick: (() -> Void)? = nil
+    func makeNSView(context: Context) -> DotDragView { let v = DotDragView(color: agent.color); v.onDrop = onDrop; v.onClick = onClick; return v }
+    func updateNSView(_ view: DotDragView, context: Context) { view.onDrop = onDrop; view.onClick = onClick }
 }
 
 struct RosterView: View {
@@ -15,7 +16,7 @@ struct RosterView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("pika dots").font(.system(size: 25, weight: .bold, design: .rounded)).tracking(-0.8)
-                    Text("A little company for your day.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("A little company for your day. · 0.3").font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Menu {
@@ -60,7 +61,7 @@ struct RosterView: View {
             }
             HStack(alignment: .top, spacing: 7) {
                 Image(systemName: "lock.shield").font(.system(size: 11)).padding(.top, 1)
-                Text("Your window stays yours until you press Go.")
+                Text("Go shares one window. Watch checks it every 45 seconds.")
                     .font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }.foregroundStyle(.secondary).padding(.horizontal, 4)
@@ -133,40 +134,81 @@ final class BubbleState: ObservableObject {
     @Published var purpose = ""
     @Published var response = ""
     @Published var busy = false
+    @Published var expanded = true
+    @Published var watching = false
+    @Published var activity = ""
+    @Published var lastChecked = ""
     let agent: AgentDefinition
     @Published var window: WindowContext?
     init(agent: AgentDefinition, window: WindowContext?) { self.agent = agent; self.window = window }
+}
+
+struct PerchedDot: View {
+    @ObservedObject var state: BubbleState
+    let onDrop: (NSPoint) -> Void
+    let toggle: () -> Void
+    var body: some View {
+        DraggableDot(agent: state.agent, onDrop: onDrop, onClick: toggle)
+            .frame(width: 48, height: 48)
+            .overlay(alignment: .topTrailing) {
+                if state.watching { Circle().fill(.green).frame(width: 7, height: 7).padding(4) }
+            }
+            .help("Click to set a purpose; drag to move to another window")
+    }
+}
+
+struct WindowTabShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 0, y: rect.maxY))
+        p.addCurve(to: CGPoint(x: 20, y: 12), control1: CGPoint(x: 12, y: rect.maxY), control2: CGPoint(x: 8, y: 12))
+        p.addQuadCurve(to: CGPoint(x: 34, y: 0), control: CGPoint(x: 22, y: 0))
+        p.addLine(to: CGPoint(x: rect.maxX - 34, y: 0))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX - 20, y: 12), control: CGPoint(x: rect.maxX - 22, y: 0))
+        p.addCurve(to: CGPoint(x: rect.maxX, y: rect.maxY), control1: CGPoint(x: rect.maxX - 8, y: 12), control2: CGPoint(x: rect.maxX - 12, y: rect.maxY))
+        p.closeSubpath(); return p
+    }
 }
 
 struct TaskBubble: View {
     @ObservedObject var state: BubbleState
     let submit: () -> Void
     let close: () -> Void
-    let onDrop: (NSPoint) -> Void
+    let toggleWatch: () -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                DraggableDot(agent: state.agent, onDrop: onDrop).frame(width: 48, height: 48).help("Drag me onto another window")
-                TextField("My purpose in \(state.window?.appName ?? "this app")…", text: $state.prompt)
-                    .textFieldStyle(.plain).font(.system(size: 14, weight: .medium))
-                    .onSubmit { if !state.busy { submit() } }
-                if state.busy { ProgressView().controlSize(.small) }
-                else { Button(action: submit) { Image(systemName: "arrow.up.circle.fill").font(.title2) }.buttonStyle(.plain).disabled(state.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
-                Button(action: close) { Image(systemName: "xmark").font(.caption) }.buttonStyle(.plain).foregroundStyle(.secondary)
-            }.padding(.horizontal, 10)
-            if !state.purpose.isEmpty {
-                Text(state.purpose).font(.caption).foregroundStyle(Color(nsColor: state.agent.color)).lineLimit(2).padding(.horizontal, 18).padding(.bottom, 8)
-            }
+        VStack(spacing: 0) {
             if !state.response.isEmpty {
-                Divider()
-                ScrollView { Text(state.response).font(.system(size: 13)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(16) }.frame(height: 160)
+                ScrollView {
+                    Text(state.response).font(.system(size: 12)).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                }.frame(height: 132)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16).padding(.bottom, 6)
             }
-            HStack { Text(state.window?.label ?? "No window selected").lineLimit(1); Spacer(); Text("OpenAI · Go shares window") }.font(.system(size: 9)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 8)
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    TextField("Purpose in \(state.window?.appName ?? "this window")…", text: $state.prompt)
+                        .textFieldStyle(.plain).font(.system(size: 12, weight: .medium))
+                        .onSubmit { if !state.busy { submit() } }
+                        .padding(.horizontal, 10).padding(.vertical, 7)
+                        .background(.white.opacity(0.07), in: Capsule())
+                    if state.busy { ProgressView().controlSize(.mini) }
+                    else { Button(action: submit) { Image(systemName: "arrow.up.circle.fill").font(.system(size: 19)) }.buttonStyle(.plain).help("Send this window and purpose to OpenAI") }
+                    Button(action: close) { Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)) }.buttonStyle(.plain).foregroundStyle(.secondary).help("Detach companion")
+                }
+                HStack(spacing: 6) {
+                    Button(action: toggleWatch) {
+                        Label(state.watching ? "Watching · stop" : "Watch", systemImage: state.watching ? "pause.circle.fill" : "eye")
+                    }.buttonStyle(.plain).foregroundStyle(state.watching ? Color.green : Color.secondary)
+                    Spacer()
+                    Text(state.watching ? state.activity : "Go shares this window with OpenAI").lineLimit(1)
+                    Button { state.expanded = false } label: { Image(systemName: "chevron.down") }.buttonStyle(.plain).help("Collapse to dot")
+                }.font(.system(size: 9)).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 27).padding(.top, 10).padding(.bottom, 8)
+            .background(WindowTabShape().fill(Color(nsColor: NSColor(calibratedWhite: 0.14, alpha: 0.98))))
         }
-        .frame(width: 440)
-        .background(Color(nsColor: NSColor(calibratedWhite: 0.12, alpha: 0.98)))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.1)))
+        .frame(width: 430)
         .environment(\.colorScheme, .dark)
     }
 }

@@ -28,6 +28,8 @@ struct WindowFinder {
 final class DotDragView: NSView {
     let color: NSColor
     var onDrop: ((NSPoint) -> Void)?
+    var onClick: (() -> Void)?
+    private var didDrag = false
     private var ghost: NSPanel?
     private var ghostDot: DotDragView?
     private var animation: Task<Void, Never>?
@@ -88,6 +90,7 @@ final class DotDragView: NSView {
         NSGraphicsContext.restoreGraphicsState()
     }
     override func mouseDown(with event: NSEvent) {
+        didDrag = false
         lastPoint = NSEvent.mouseLocation
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 110, height: 110), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.backgroundColor = .clear; panel.isOpaque = false; panel.hasShadow = false
@@ -97,6 +100,7 @@ final class DotDragView: NSView {
         ghost = panel; ghostDot = dot
     }
     override func mouseDragged(with event: NSEvent) {
+        didDrag = true
         let p = NSEvent.mouseLocation
         let dx = p.x - lastPoint.x, dy = p.y - lastPoint.y
         if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
@@ -109,6 +113,6 @@ final class DotDragView: NSView {
     }
     override func mouseUp(with event: NSEvent) {
         ghost?.close(); ghost = nil; ghostDot = nil
-        onDrop?(NSEvent.mouseLocation)
+        if didDrag { onDrop?(NSEvent.mouseLocation) } else { onClick?() }
     }
 }
