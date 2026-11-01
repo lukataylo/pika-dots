@@ -24,7 +24,7 @@ Keep `OPENAI_API_KEY` in the ignored `.env.local` at the repository root. The pa
 3. Enter its purpose in the tab above the window and press Go. Purposes are remembered per companion and application.
 4. Click the perched dot to expand or collapse the purpose tab. Drag the dot to move it to another window.
 5. On the first request, allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording. Restart if macOS requests it.
-6. Go sends a single selected-window image and your task to OpenAI. Watch sends an immediate request and checks every 45 seconds while that target window is foreground; background or minimized targets pause checks.
+6. Go sends a single selected-window image and your task to OpenAI. Watch sends an immediate request and checks every 15 seconds while that target window is foreground; background or minimized targets pause checks.
 7. Watching shows a green indicator. Click Watch again, detach the dot, or choose Stop all to stop pending checks. Keyboard monitoring uses a local idle-time signal; it never records typed text, key codes, or clipboard contents.
 8. Focus starts local app-switch reminders; Chill starts a two-minute timer. These modes replace one another. Errors stop periodic watching and appear in the expanded tab.
 

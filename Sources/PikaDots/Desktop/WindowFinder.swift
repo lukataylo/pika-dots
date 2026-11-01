@@ -7,6 +7,7 @@ struct WindowFinder {
             guard let pid = info[kCGWindowOwnerPID as String] as? Int32,
                   pid != ProcessInfo.processInfo.processIdentifier,
                   let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
+                  (info[kCGWindowAlpha as String] as? Double ?? 1) > 0.05,
                   let raw = info[kCGWindowBounds as String] as? NSDictionary,
                   let bounds = CGRect(dictionaryRepresentation: raw), bounds.width > 80, bounds.height > 60,
                   let id = info[kCGWindowNumber as String] as? UInt32 else { return nil }
@@ -54,6 +55,7 @@ final class DotDragView: NSView {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .milliseconds(24)) } catch { return }
                 guard let self else { return }
+                guard self.window?.occlusionState.contains(.visible) == true else { continue }
                 self.stretch += (1 - self.stretch) * 0.12
                 self.needsDisplay = true
             }
@@ -97,6 +99,8 @@ final class DotDragView: NSView {
         for x in [-14.0, 10.0] { NSBezierPath(ovalIn: NSRect(x: x, y: -8, width: 5, height: 3)).fill() }
         NSGraphicsContext.restoreGraphicsState()
     }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func accessibilityPerformPress() -> Bool { onClick?(); return onClick != nil }
     override func mouseDown(with event: NSEvent) {
         didDrag = false
         lastPoint = NSEvent.mouseLocation
@@ -121,6 +125,8 @@ final class DotDragView: NSView {
     }
     override func mouseUp(with event: NSEvent) {
         ghost?.close(); ghost = nil; ghostDot = nil
-        if didDrag { onDrop?(NSEvent.mouseLocation) } else { onClick?() }
+        // Defer: a drop can close the panel that is still dispatching this event.
+        let point = NSEvent.mouseLocation, drop = onDrop, click = onClick, dragged = didDrag
+        DispatchQueue.main.async { if dragged { drop?(point) } else { click?() } }
     }
 }

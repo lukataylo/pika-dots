@@ -7,16 +7,20 @@ struct CompanionRecord: Codable, Identifiable {
     var hexColor: String
     var mode: AgentMode
     var defaultPurpose: String
+    var watchYouTube: Bool? = nil
+    var pauseOnDistraction: Bool? = nil
     static func record(_ agent: AgentDefinition) -> Self {
-        let c = agent.color.usingColorSpace(.deviceRGB) ?? .systemOrange
+        // sRGB matches how definition(skill:) decodes; clamp extended-range picker colours.
+        let c = agent.color.usingColorSpace(.sRGB) ?? .systemOrange
+        let byte = { (v: CGFloat) in Int((min(1, max(0, v)) * 255).rounded()) }
         return Self(id: agent.id, name: agent.name, summary: agent.summary,
-                    hexColor: String(format: "%02X%02X%02X", Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255)), mode: agent.mode, defaultPurpose: agent.defaultPurpose)
+                    hexColor: String(format: "%02X%02X%02X", byte(c.redComponent), byte(c.greenComponent), byte(c.blueComponent)), mode: agent.mode, defaultPurpose: agent.defaultPurpose, watchYouTube: agent.watchYouTube, pauseOnDistraction: agent.pauseOnDistraction)
     }
     func definition(skill: String) -> AgentDefinition {
         let value = UInt32(hexColor, radix: 16) ?? 0xFF9500
         return AgentDefinition(id: id, name: name,
             color: NSColor(srgbRed: CGFloat((value >> 16) & 255) / 255, green: CGFloat((value >> 8) & 255) / 255, blue: CGFloat(value & 255) / 255, alpha: 1), summary: summary,
-            skillText: skill, mode: mode, defaultPurpose: defaultPurpose)
+            skillText: skill, mode: mode, defaultPurpose: defaultPurpose, watchYouTube: watchYouTube ?? (id == "focus"), pauseOnDistraction: pauseOnDistraction ?? false)
     }
 }
 

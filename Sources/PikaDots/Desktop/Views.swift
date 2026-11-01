@@ -4,7 +4,7 @@ struct DraggableDot: NSViewRepresentable {
     let agent: AgentDefinition
     let onDrop: (NSPoint) -> Void
     var onClick: (() -> Void)? = nil
-    func makeNSView(context: Context) -> DotDragView { let v = DotDragView(color: agent.color); v.onDrop = onDrop; v.onClick = onClick; v.artwork = CharacterArtwork.image(for: agent.id); return v }
+    func makeNSView(context: Context) -> DotDragView { let v = DotDragView(color: agent.color); v.onDrop = onDrop; v.onClick = onClick; v.artwork = CharacterArtwork.image(for: agent.id); v.setAccessibilityLabel(agent.name); return v }
     func updateNSView(_ view: DotDragView, context: Context) { view.onDrop = onDrop; view.onClick = onClick; view.artwork = CharacterArtwork.image(for: agent.id) }
 }
 
@@ -31,6 +31,7 @@ struct RosterView: View {
             Divider()
             Button("Quit Pika Dots", systemImage: "power") { NSApp.terminate(nil) }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Companion shelf")
         .help(app.notice.isEmpty ? "Drag a companion onto a window. Right-click for options." : app.notice)
     }
@@ -48,7 +49,7 @@ private struct ShelfCompanion: View {
             DraggableDot(agent: agent, onDrop: onDrop, onClick: onClick)
                 .frame(width: 40, height: 40)
                 .offset(y: hovering && !reduceMotion ? -2 : 0)
-            Text(agent.name).font(.system(size: 9, weight: .medium, design: .rounded))
+            Button(agent.name, action: onClick).buttonStyle(.plain).font(.system(size: 9, weight: .medium, design: .rounded))
                 .foregroundStyle(.primary)
                 .shadow(color: Color(nsColor: .windowBackgroundColor), radius: 2)
                 .contentShape(Rectangle())
@@ -72,8 +73,11 @@ final class BubbleState: ObservableObject {
     @Published var windowColor: NSColor = .windowBackgroundColor
     @Published var windowIsDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     @Published var watching = false
+    @Published var supervisionStatus = "Not supervising"
+    @Published var supervisionError = false
     @Published var activity = ""
     @Published var lastChecked = ""
+    var startedAt: Date?
     let agent: AgentDefinition
     @Published var window: WindowContext?
     init(agent: AgentDefinition, window: WindowContext?) { self.agent = agent; self.window = window }
@@ -86,25 +90,29 @@ struct PerchedDot: View {
     let dismiss: () -> Void
     let settings: () -> Void
     let toggleWatch: () -> Void
+    var checkNow: (() -> Void)? = nil
     var body: some View {
         DraggableDot(agent: state.agent, onDrop: onDrop, onClick: toggle)
             .frame(width: 40, height: 40)
             .padding(.horizontal, 7).padding(.top, 4).padding(.bottom, 2)
             .overlay(alignment: .topTrailing) {
-                if state.watching { Circle().fill(.green).frame(width: 4, height: 4).padding(5) }
+                if state.watching { Circle().fill(state.supervisionError ? .orange : .green).frame(width: 4, height: 4).padding(5) }
             }
             .overlay(alignment: .bottomTrailing) {
                 // The purpose pill collapses on send, so the cat carries the "thinking" state.
                 if state.busy { ProgressView().controlSize(.mini).padding(2) }
             }
             .contextMenu {
+                Text(state.supervisionStatus)
+                if let checkNow { Button("Check now", action: checkNow) }
+                Divider()
                 Button(state.expanded ? "Hide purpose" : "Set purpose", action: toggle)
                 Button(state.watching ? "Pause supervision" : "Start supervision", action: toggleWatch)
                 Button("Settings…", action: settings)
                 Divider()
                 Button("Dismiss \(state.agent.name)", systemImage: "xmark.circle", action: dismiss)
             }
-            .help("\(state.agent.name) · click to expand, right-click to dismiss")
+            .help("\(state.agent.name) · \(state.supervisionStatus) · right-click for controls")
     }
 }
 

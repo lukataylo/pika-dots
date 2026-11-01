@@ -1,13 +1,20 @@
 import AppKit
 import ScreenCaptureKit
 
+@MainActor
 struct WindowCapture {
     static func capture(_ context: WindowContext) async throws -> Data {
-        guard CGPreflightScreenCaptureAccess() else {
-            CGRequestScreenCaptureAccess()
+        guard ScreenAccess.available else {
             throw PikaError.message("Screen access is off. Open Pika Dots settings to enable it, then retry.")
         }
-        let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+        let content: SCShareableContent
+        do {
+            content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+            ScreenAccess.verified = true
+        } catch {
+            ScreenAccess.verified = false
+            throw PikaError.message("Screen access changed. Check permissions in Pika settings, then restart.")
+        }
         guard let window = content.windows.first(where: { $0.windowID == context.windowID }) else {
             throw PikaError.message("This window is no longer available. Drag the dot onto an open window again.")
         }

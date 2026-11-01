@@ -9,6 +9,7 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
     private var clickMonitor: Any?
     private var editor: NSWindow?
     private var settings: NSWindow?
+    private var permissionObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: 25)
@@ -29,9 +30,18 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(true, forKey: "hasSeenCompanionEditor")
         }
         app.onAttachment = { [weak shelf] in shelf?.orderOut(nil) }
+        app.restoreAttachments()
+        permissionObserver = NotificationCenter.default.addObserver(forName: .pikaScreenAccessRecovered, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.app.screenAccessRecovered() }
+        }
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak shelf] _ in
             Task { @MainActor in shelf?.orderOut(nil) }
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        app.saveAttachments()
+        UserDefaults.standard.synchronize()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

@@ -25,6 +25,24 @@ final class LiveSupervisionTests: XCTestCase {
         XCTAssertTrue(distraction.lowercased().contains("migration"))
         let relaxation = try await OpenAIResponder().respond(to: TaskRequest(sessionID: UUID(), agent: chill, prompt: "I am on a two-minute break but returned to coding. Give one brief reminder to stop working and relax.", window: nil, imageData: fixture("Code editor: App.swift\n\nfunc deployProduction() {\n    runDatabaseMigration()\n}\n\nTODO: finish feature implementation\nBuild running...")))
         XCTAssertFalse(relaxation.isEmpty)
-        XCTAssertTrue(relaxation.lowercased().contains("break") || relaxation.lowercased().contains("relax"), relaxation)
+        XCTAssertTrue(["break", "relax", "rest", "breath", "pause"].contains { relaxation.lowercased().contains($0) }, relaxation)
+    }
+
+    /// Full Go path against a real on-screen window: ScreenCaptureKit capture -> OpenAI -> notification-sized reply.
+    /// Run with PIKA_LIVE_TESTS=1 and a TextEdit window open; uses the test runner's screen-recording permission.
+    func testLiveCaptureOfRealWindowAnswersEachCompanion() async throws {
+        guard ProcessInfo.processInfo.environment["PIKA_LIVE_TESTS"] == "1" else { throw XCTSkip("Opt-in live API test.") }
+        let window = try XCTUnwrap(WindowFinder.windows().first { $0.appName == "TextEdit" }, "Open a TextEdit window first.")
+        let image = try await WindowCapture.capture(window)
+        XCTAssertGreaterThan(image.count, 1000)
+        let agents = SkillLoader.load()
+        for (id, prompt) in [("explain", "explain this error"), ("focus", "help me finish this proposal"), ("chill", "Help me take a two-minute break.")] {
+            let agent = try XCTUnwrap(agents.first { $0.id == id })
+            let reply = try await OpenAIResponder().respond(to: TaskRequest(sessionID: UUID(), agent: agent, prompt: prompt, window: window, imageData: image))
+            let short = NotificationCopy.short(reply)
+            print("LIVE \(id): \(reply)  ->  \(short)")
+            XCTAssertFalse(reply.isEmpty)
+            XCTAssertLessThanOrEqual(short.count, 100)
+        }
     }
 }

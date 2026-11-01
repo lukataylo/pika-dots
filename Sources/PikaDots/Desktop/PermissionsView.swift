@@ -16,18 +16,29 @@ final class PermissionState: ObservableObject {
             refreshNotifications()
         }
     }
-    @Published var screenAllowed = CGPreflightScreenCaptureAccess()
-    func refresh() { screenAllowed = CGPreflightScreenCaptureAccess(); refreshNotifications() }
-    func request() { CGRequestScreenCaptureAccess(); refresh() }
+    @Published var screenAllowed = ScreenAccess.available
+    @Published var checking = false
+    @Published var accessMessage = ""
+    func refresh() {
+        guard !checking else { return }
+        checking = true; refreshNotifications()
+        Task {
+            screenAllowed = await ScreenAccess.probe()
+            accessMessage = screenAllowed ? "Verified with ScreenCaptureKit" : "If already enabled in macOS, restart Pika Dots to refresh access."
+            checking = false
+            if screenAllowed { NotificationCenter.default.post(name: .pikaScreenAccessRecovered, object: nil) }
+        }
+    }
+    func request() {
+        if CGRequestScreenCaptureAccess() { refresh() }
+        else { accessMessage = "Enable Pika Dots in macOS settings, then restart."; openSettings() }
+    }
     func openSettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
     }
     func restart() {
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.createsNewApplicationInstance = true
-        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
-            if error == nil { Task { @MainActor in NSApp.terminate(nil) } }
-        }
+        do { try AppRelauncher.restart() }
+        catch { accessMessage = "Could not restart. Quit and reopen Pika Dots." }
     }
 }
 
@@ -50,13 +61,13 @@ struct PermissionsView: View {
                     Text(permissions.screenAllowed ? "Allowed on this Mac" : "Needed to understand the attached window").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Check again") { permissions.refresh() }
+                Button(permissions.checking ? "Checking…" : "Check again") { permissions.refresh() }.disabled(permissions.checking)
             }
             HStack {
                 Button("Request access") { permissions.request() }
                 Button("Open macOS settings") { permissions.openSettings() }
             }
-            Text("macOS may only show the request once. If it does not appear, open settings and enable Pika Dots. Restart after changing access.").font(.caption).foregroundStyle(.secondary)
+            Text(permissions.accessMessage.isEmpty ? "After a denial, enable access in macOS settings and restart. Your attachments will be restored." : permissions.accessMessage).font(.caption).foregroundStyle(.secondary)
             Divider()
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -76,3 +87,5 @@ struct PermissionsView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in permissions.refresh() }
     }
 }
+
+extension Notification.Name { static let pikaScreenAccessRecovered = Notification.Name("pikaScreenAccessRecovered") }

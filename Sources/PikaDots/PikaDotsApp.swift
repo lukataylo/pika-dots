@@ -27,6 +27,11 @@ final class AttachedSession {
     let dotPanel: CompanionPanel
     var watchTask: Task<Void, Never>?
     var task: Task<Void, Never>?
+    var missingFrames = 0
+    var lastDistraction = Date.distantPast
+    var snoozedUntil = Date.distantPast
+    var retryAfter = Date.distantPast
+    var lastErrorNotice = Date.distantPast
     init(state: BubbleState, panel: CompanionPanel, dotPanel: CompanionPanel) { self.state = state; self.panel = panel; self.dotPanel = dotPanel }
 }
 
@@ -42,6 +47,7 @@ final class AppController: ObservableObject {
     private let monitor = SessionMonitor()
     private var monitorOwner: String?
     private let nudges = NudgePresenter()
+    private let intervention = InterventionPresenter()
     @Published private var sessions: [String: AttachedSession] = [:]
     var attachedCount: Int { sessions.count }
     func attachedApp(_ id: String) -> String? { sessions[id]?.state.window?.appName }
@@ -55,6 +61,28 @@ final class AppController: ObservableObject {
                 do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
                 self?.updateAttachments()
             }
+        }
+    }
+
+    func saveAttachments() {
+        let snapshots = sessions.values.compactMap { session -> AttachmentSnapshot? in
+            guard let target = session.state.window else { return nil }
+            return AttachmentSnapshot(agentID: session.state.agent.id, windowID: target.windowID, ownerPID: target.ownerPID, prompt: session.state.prompt, running: session.state.watching || monitorOwner == session.state.agent.id, startedAt: session.state.startedAt, snoozedUntil: session.snoozedUntil)
+        }
+        if let data = try? JSONEncoder().encode(snapshots) { UserDefaults.standard.set(data, forKey: "attachments.v1") }
+    }
+    func restoreAttachments() {
+        guard let data = UserDefaults.standard.data(forKey: "attachments.v1"), let snapshots = try? JSONDecoder().decode([AttachmentSnapshot].self, from: data) else { return }
+        let windows = WindowFinder.windows()
+        for snapshot in snapshots {
+            guard let agent = agents.first(where: { $0.id == snapshot.agentID }), let window = windows.first(where: { $0.windowID == snapshot.windowID && $0.ownerPID == snapshot.ownerPID }) else { continue }
+            attach(agent, to: window, restored: snapshot)
+        }
+    }
+    func screenAccessRecovered() {
+        for session in sessions.values where session.state.watching {
+            session.retryAfter = .distantPast; session.state.supervisionError = false
+            session.state.supervisionStatus = "Ready · checks resume in the attached app"
         }
     }
 
@@ -78,31 +106,37 @@ final class AppController: ObservableObject {
     }
 
     func attachToFrontmost(_ agent: AgentDefinition) {
-        guard let window = WindowFinder.windows().first else { notice = "Open a window, then drag a dot onto it."; return }
+        guard let window = WindowFinder.windows().first else { report("Open a window, then drag a dot onto it.", agent); return }
         attach(agent, to: window)
     }
 
     func attach(_ agent: AgentDefinition, at point: NSPoint) {
-        guard let window = WindowFinder.window(at: point) else { notice = "Drop onto an application window, such as Chrome or Notes."; return }
+        guard let window = WindowFinder.window(at: point) else { report("Drop onto an application window, such as Chrome or Notes.", agent); return }
         attach(agent, to: window)
     }
 
-    private func attach(_ agent: AgentDefinition, to window: WindowContext) {
+    private func report(_ message: String, _ agent: AgentDefinition) {
+        notice = message
+        nudges.show(message, agent: agent)
+    }
+
+    private func attach(_ agent: AgentDefinition, to window: WindowContext, restored: AttachmentSnapshot? = nil) {
         notice = ""
         close(agent.id)
         // One companion per target keeps the purpose field readable.
         let replaced = sessions.filter { $0.value.state.window?.windowID == window.windowID }.map(\.key)
         for id in replaced { close(id) }
         let state = BubbleState(agent: agent, window: window)
-        state.prompt = UserDefaults.standard.string(forKey: purposeKey(agent, window)) ?? ""
+        state.prompt = restored?.prompt ?? UserDefaults.standard.string(forKey: purposeKey(agent, window)) ?? ""
+        state.startedAt = restored?.startedAt
         let panel = CompanionPanel(contentRect: NSRect(x: 0, y: 0, width: 440, height: 78), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.backgroundColor = .clear; panel.isOpaque = false; panel.hasShadow = true
-        panel.level = .floating; panel.isReleasedWhenClosed = false
+        panel.level = .normal; panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         let dotPanel = CompanionPanel(contentRect: NSRect(x: 0, y: 0, width: 48, height: 48), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         dotPanel.backgroundColor = .clear; dotPanel.isOpaque = false; dotPanel.hasShadow = false
-        dotPanel.level = .floating; dotPanel.isReleasedWhenClosed = false
+        dotPanel.level = .normal; dotPanel.isReleasedWhenClosed = false
         dotPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         dotPanel.hidesOnDeactivate = false
         dotPanel.becomesKeyOnlyIfNeeded = true
@@ -115,7 +149,8 @@ final class AppController: ObservableObject {
                 if state.expanded { self.sessions[agent.id]?.panel.makeKeyAndOrderFront(nil) }
             }, dismiss: { [weak self] in self?.close(agent.id) },
             settings: { [weak self] in self?.showSettings() },
-            toggleWatch: { [weak self, weak state] in if let state { self?.toggleWatch(state) } }))
+            toggleWatch: { [weak self, weak state] in if let state { self?.toggleWatch(state) } },
+            checkNow: { [weak self, weak state] in if let state { self?.submit(state, periodic: true) } }))
         panel.onResignKey = { [weak state] in state?.expanded = false }
         panel.hasShadow = false
         panel.contentView = NSHostingView(rootView: TaskBubble(state: state,
@@ -123,12 +158,14 @@ final class AppController: ObservableObject {
             close: { [weak self] in self?.close(agent.id) },
             settings: { [weak self] in self?.showSettings() },
             toggleWatch: { [weak self, weak state] in if let state { self?.toggleWatch(state) } }))
+        state.expanded = agent.mode == .promptable
         sessions[agent.id] = AttachedSession(state: state, panel: panel, dotPanel: dotPanel)
+        sessions[agent.id]?.snoozedUntil = restored?.snoozedUntil ?? .distantPast
         position(sessions[agent.id]!, window: window)
-        dotPanel.orderFrontRegardless()
+        dotPanel.order(.above, relativeTo: Int(window.windowID))
         if state.expanded { panel.makeKeyAndOrderFront(nil) }
         sampleAppearance(state)
-        if agent.mode == .supervisor {
+        if agent.mode == .supervisor && (restored?.running ?? true) {
             if ["focus", "chill"].contains(agent.id) {
                 let opposite = agent.id == "focus" ? "chill" : "focus"
                 if let previous = sessions[opposite] {
@@ -141,8 +178,9 @@ final class AppController: ObservableObject {
             state.expanded = false
             panel.orderOut(nil)
             if ["focus", "chill"].contains(agent.id) {
+                state.startedAt = state.startedAt ?? Date()
                 monitorOwner = agent.id
-                monitor.start(agentID: agent.id, targetApp: window.appName) { [weak self, weak state] message in
+                monitor.start(agentID: agent.id, targetApp: window.appName, targetPID: window.ownerPID, startedAt: state.startedAt) { [weak self, weak state] message in
                     state?.response = message
                     self?.nudges.show(message, agent: agent)
                 }
@@ -151,6 +189,7 @@ final class AppController: ObservableObject {
                 toggleWatch(state)
             }
         }
+        saveAttachments()
         onAttachment?()
     }
 
@@ -188,55 +227,91 @@ final class AppController: ObservableObject {
     }
 
     private func updateAttachments() {
+        guard !sessions.isEmpty else { return }
         let windows = WindowFinder.windows()
-        let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
-        let ownPID = ProcessInfo.processInfo.processIdentifier
         for session in sessions.values {
             guard let old = session.state.window else { continue }
             guard let current = windows.first(where: { $0.windowID == old.windowID && $0.ownerPID == old.ownerPID }) else {
-                session.panel.orderOut(nil); session.dotPanel.orderOut(nil); continue
+                session.missingFrames += 1
+                if session.missingFrames > 15 { session.panel.orderOut(nil); session.dotPanel.orderOut(nil) }
+                continue
             }
-            session.state.window = current
-            session.state.activity = TypingActivity.summary(for: current.ownerPID)
+            session.missingFrames = 0
+            // Assign only on change: every write republishes both hosting views.
+            if current != old { session.state.window = current }
+            let activity = TypingActivity.summary(for: current.ownerPID)
+            if activity != session.state.activity { session.state.activity = activity }
             position(session, window: current)
-            // Only show on the frontmost window of that app, not another Chrome/Notes window.
-            let frontWindow = windows.first { $0.ownerPID == current.ownerPID }
-            let visible = (frontPID == current.ownerPID || frontPID == ownPID) && frontWindow?.windowID == current.windowID
-            if visible {
-                session.dotPanel.orderFrontRegardless()
-                if session.state.expanded { session.panel.orderFrontRegardless() } else { session.panel.orderOut(nil) }
-            } else { session.panel.orderOut(nil); session.dotPanel.orderOut(nil) }
+            // Normal-level panels follow the target's actual window-server order,
+            // rather than vanishing whenever another application gains focus.
+            session.dotPanel.order(.above, relativeTo: Int(current.windowID))
+            if session.state.expanded {
+                session.panel.order(.above, relativeTo: session.dotPanel.windowNumber)
+            } else { session.panel.orderOut(nil) }
+
         }
     }
 
     private func toggleWatch(_ state: BubbleState) {
         guard let session = sessions[state.agent.id] else { return }
         if state.watching {
-            state.watching = false; session.watchTask?.cancel(); session.task?.cancel()
+            state.watching = false; state.supervisionStatus = "Paused by you"; session.watchTask?.cancel(); session.task?.cancel()
+            intervention.dismiss(owner: state.agent.id)
             if monitorOwner == state.agent.id { monitor.stop(); monitorOwner = nil; nudges.dismiss() }
+            saveAttachments()
             return
         }
         guard !state.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             nudges.show("Set a purpose first.", agent: state.agent); return
         }
         state.watching = true
-        state.activity = "Starting · checks every 45s"
-        submit(state)
-        session.watchTask = Task { [weak self, weak state] in
+        saveAttachments()
+        state.supervisionStatus = "Ready · waiting for attached app"
+        if let target = state.window, FocusWatchPolicy.canCheck(target, windows: WindowFinder.windows(), frontPID: NSWorkspace.shared.frontmostApplication?.processIdentifier) {
+            if state.agent.watchYouTube && FocusWatchPolicy.isYouTube(target.title) { detectedYouTube(state, session: session) }
+            else { submit(state) }
+        }
+        session.watchTask = Task { [weak self, weak state, weak session] in
+            var lastVision = Date()
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .seconds(45)); try Task.checkCancellation() } catch { return }
-                guard let self, let state, state.watching, let target = state.window else { return }
+                do { try await Task.sleep(for: .seconds(2)); try Task.checkCancellation() } catch { return }
+                guard let self, let state, let session, state.watching, let target = state.window else { return }
                 let windows = WindowFinder.windows()
-                guard NSWorkspace.shared.frontmostApplication?.processIdentifier == target.ownerPID,
-                      windows.first(where: { $0.ownerPID == target.ownerPID })?.windowID == target.windowID else { continue }
-                self.submit(state, periodic: true)
+                guard FocusWatchPolicy.canCheck(target, windows: windows, frontPID: NSWorkspace.shared.frontmostApplication?.processIdentifier) else {
+                    state.supervisionStatus = "Paused · app in background"; continue
+                }
+                guard Date() >= session.snoozedUntil else { state.supervisionStatus = "Snoozed for 1 minute"; continue }
+                if state.agent.watchYouTube && FocusWatchPolicy.isYouTube(target.title) {
+                    self.detectedYouTube(state, session: session)
+                    continue
+                }
+                guard ScreenAccess.available else {
+                    state.supervisionError = true; state.supervisionStatus = "Screen access needed · open settings"; continue
+                }
+                if !state.busy && Date().timeIntervalSince(lastVision) >= 15 && Date() >= session.retryAfter {
+                    lastVision = Date(); self.submit(state, periodic: true)
+                }
             }
+        }
+    }
+
+    private func detectedYouTube(_ state: BubbleState, session: AttachedSession) {
+        state.supervisionStatus = "YouTube detected"
+        state.supervisionError = false
+        guard Date() >= session.snoozedUntil, Date().timeIntervalSince(session.lastDistraction) >= 60 else { return }
+        session.lastDistraction = Date()
+        nudges.show("YouTube can wait. Back to your task?", agent: state.agent)
+        if state.agent.pauseOnDistraction, let target = state.window {
+            intervention.show(agent: state.agent, target: target, resume: { [weak session] in
+                session?.snoozedUntil = Date().addingTimeInterval(60)
+            }, stop: { [weak self, weak state] in if let state { self?.toggleWatch(state) } })
         }
     }
 
     private func submit(_ state: BubbleState, periodic: Bool = false) {
         let prompt = state.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !state.busy, let window = state.window, let session = sessions[state.agent.id] else { return }
+        state.supervisionStatus = "Checking window…"
         state.busy = true; state.expanded = false; state.permissionNeeded = false; state.purpose = prompt; if !periodic { state.response = "" }
         UserDefaults.standard.set(prompt, forKey: purposeKey(state.agent, window))
         session.task = Task { [weak self, weak session, state] in
@@ -249,35 +324,49 @@ final class AppController: ObservableObject {
                 let answer = try await responder.respond(to: request)
                 try Task.checkCancellation()
                 guard session != nil else { return }
-                if answer.trimmingCharacters(in: .whitespacesAndNewlines) != "NO_NUDGE" {
+                let youtubeNow = state.agent.watchYouTube && FocusWatchPolicy.isYouTube(state.window?.title ?? "")
+                if youtubeNow, let session { detectedYouTube(state, session: session) }
+                if !youtubeNow && !NudgeFilter.isQuiet(answer) {
                     state.response = answer
                     nudges.show(answer, agent: state.agent)
                 }
                 state.lastChecked = Date().formatted(date: .omitted, time: .shortened)
+                state.supervisionError = false
+                if !youtubeNow { state.supervisionStatus = "Active · checked " + state.lastChecked }
                 if !periodic && ["focus", "chill"].contains(state.agent.id) {
                     monitorOwner = state.agent.id
-                    monitor.start(agentID: state.agent.id, targetApp: window.appName) { [weak self, weak state] message in
+                    monitor.start(agentID: state.agent.id, targetApp: window.appName, targetPID: window.ownerPID) { [weak self, weak state] message in
                         state?.response = message
                         if let state { self?.nudges.show(message, agent: state.agent) }
                     }
                 }
             } catch is CancellationError { } catch {
-                state.permissionNeeded = !CGPreflightScreenCaptureAccess()
+                state.permissionNeeded = !ScreenAccess.available
                 state.response = state.permissionNeeded ? "" : error.localizedDescription
                 state.expanded = false
-                nudges.show(state.permissionNeeded ? "Enable screen access in Pika settings." : error.localizedDescription, agent: state.agent)
-                state.watching = false; session?.watchTask?.cancel()
+                state.supervisionError = true
+                state.supervisionStatus = state.permissionNeeded ? "Screen access needed" : "Retrying after an error"
+                session?.retryAfter = Date().addingTimeInterval(30)
+                if let session, Date().timeIntervalSince(session.lastErrorNotice) >= 60 {
+                    session.lastErrorNotice = Date()
+                    nudges.show(state.permissionNeeded ? "Enable screen access in Pika settings." : error.localizedDescription, agent: state.agent)
+                }
+
             }
             if let session { position(session, window: state.window ?? window) }
         }
     }
     private func close(_ id: String) {
+        intervention.dismiss(owner: id)
         if monitorOwner == id { monitor.stop(); monitorOwner = nil; nudges.dismiss() }
         sessions[id]?.task?.cancel(); sessions[id]?.watchTask?.cancel()
         sessions[id]?.panel.close(); sessions[id]?.dotPanel.close(); sessions[id] = nil
+        saveAttachments()
     }
     func stopSession() {
+        intervention.dismiss()
         monitor.stop(); monitorOwner = nil; nudges.dismiss()
-        for session in sessions.values { session.task?.cancel(); session.watchTask?.cancel(); session.state.watching = false; session.state.response = "Session stopped." }
+        for session in sessions.values { session.task?.cancel(); session.watchTask?.cancel(); session.state.watching = false; session.state.supervisionStatus = "Stopped"; session.state.response = "Session stopped." }
+        saveAttachments()
     }
 }

@@ -3,8 +3,9 @@ import UserNotifications
 
 enum NotificationCopy {
     static func short(_ message: String) -> String {
-        let words = message.split(whereSeparator: { $0.isWhitespace }).prefix(14).joined(separator: " ")
-        guard words.count > 100 else { return words }
+        let all = message.split(whereSeparator: { $0.isWhitespace })
+        let words = all.prefix(14).joined(separator: " ")
+        guard words.count > 100 else { return all.count > 14 ? words + "…" : words }
         return String(words.prefix(97)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
     }
 }
@@ -33,7 +34,7 @@ final class NudgePresenter {
         task = Task { [weak self] in
             guard let self else { return }
             let settings = await center.notificationSettings()
-            var allowed = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+            var allowed = (settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional) && settings.alertSetting == .enabled
             if settings.authorizationStatus == .notDetermined { allowed = (try? await center.requestAuthorization(options: [.alert])) ?? false }
             guard !Task.isCancelled else { return }
             if allowed {

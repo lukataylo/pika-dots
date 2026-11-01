@@ -12,9 +12,11 @@ struct AgentDefinition: Identifiable, Equatable {
     let skillText: String
     var mode: AgentMode = .promptable
     var defaultPurpose: String = ""
+    var watchYouTube: Bool = false
+    var pauseOnDistraction: Bool = false
 }
 
-struct WindowContext {
+struct WindowContext: Equatable {
     let windowID: CGWindowID
     let appName: String
     let title: String
@@ -42,7 +44,14 @@ struct SkillLoader {
          ("explain", "Explain", NSColor.systemPurple, "A fresh pair of eyes")].map { id, name, color, summary in
             let url = Bundle.module.url(forResource: id, withExtension: "md", subdirectory: "Skills")
             let text = url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
-            return AgentDefinition(id: id, name: name, color: color, summary: summary, skillText: text, mode: id == "explain" ? .promptable : .supervisor, defaultPurpose: id == "focus" ? "Keep me focused on this application." : id == "chill" ? "Help me take a two-minute break." : "")
+            return AgentDefinition(id: id, name: name, color: color, summary: summary, skillText: text, mode: id == "explain" ? .promptable : .supervisor, defaultPurpose: id == "focus" ? "Keep me focused on this application." : id == "chill" ? "Help me take a two-minute break." : "", watchYouTube: id == "focus")
         }
+    }
+}
+
+enum NudgeFilter {
+    /// Models sometimes decorate the sentinel ("NO_NUDGE.", `NO_NUDGE`), so match loosely.
+    static func isQuiet(_ answer: String) -> Bool {
+        answer.uppercased().contains("NO_NUDGE")
     }
 }
