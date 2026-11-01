@@ -48,3 +48,26 @@ final class AttachmentLayoutTests: XCTestCase {
         XCTAssertTrue(screen.contains(layout.dot))
     }
 }
+
+final class CompanionStoreTests: XCTestCase {
+    func testRoundTripPersistsSkillAndSupervisorConfiguration() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CompanionStore(directory: directory)
+        let companion = AgentDefinition(id: UUID().uuidString, name: "Coach", color: .systemGreen, summary: "A little help", skillText: "# Coach\nBe kind.", mode: .supervisor, defaultPurpose: "Check my writing.")
+        try store.save([companion])
+        let loaded = try XCTUnwrap(store.load().first)
+        XCTAssertEqual(loaded.name, "Coach")
+        XCTAssertEqual(loaded.mode, .supervisor)
+        XCTAssertEqual(loaded.defaultPurpose, "Check my writing.")
+        XCTAssertEqual(loaded.skillText, "# Coach\nBe kind.")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent(companion.id + ".md").path))
+    }
+    func testEmptyRosterRemainsEmptyAfterReload() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CompanionStore(directory: directory)
+        try store.save([])
+        XCTAssertTrue(try store.load().isEmpty)
+    }
+}

@@ -1,0 +1,42 @@
+# Pika Dots 0.8 — teammate testing
+
+## Install
+
+Download PikaDots-0.8.0-universal.zip from this repository's v0.8.0 GitHub release. Unzip, move Pika Dots.app to Applications, and open it. macOS 14 or later is required. The same package includes Apple Silicon and Intel executables. Quit older versions first.
+
+This is a Developer ID signed hackathon test build, not a notarized release. macOS may block its first launch. If you trust this team's build, use System Settings → Privacy & Security → Open Anyway after attempting to open it. Do not disable Gatekeeper. Building locally from source is another option.
+
+## Setup
+
+The first launch opens Companions & Setup. Enter your own OpenAI API key into the secure field and click Save key. It stays in this Mac's Keychain; no API key is distributed in the app. You need API access and quota for the selected model (default gpt-4.1-mini). The Keychain entry is shared across versions of this app, not across teammates' Macs.
+
+Allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording when it asks. Restart after granting permission if requested. Accessibility and Input Monitoring permissions are not needed: keyboard activity uses idle time, never the characters you type.
+
+## Create and edit
+
+Click the menu-bar cat, then +, or right-click the shelf → Create or edit companions.
+
+- Choose a companion to edit, or New companion to create one.
+- Set its name, colour, description, and skill Markdown.
+- Promptable: click its attached dot, type a purpose, then Go.
+- Supervisor: supply a default purpose. Dropping a custom supervisor starts an immediate AI check and a check every 45 seconds while that target window is foreground. Background/minimized windows pause checks.
+- Built-in Focus and Chill supervisors use local app-switch reminders and a two-minute break timer. Their Markdown is used when you explicitly ask the AI with Go/Watch.
+- Saving updates the skill file and dismisses that companion's active attachment. Reattach it to use the new settings.
+
+Skills are ordinary .md files at `~/Library/Application Support/PikaDots/Companions/`, with mode/name/colour in roster.json. Direct file edits load on the next launch. The app editor is the easiest way to update them.
+
+## Test checklist
+
+1. Create a promptable companion. Edit its Markdown, save, quit, and reopen. Confirm the name and skill persist.
+2. Drag it onto Notes, then Chrome (or another browser). Move and resize each window; the tiny dot should follow its edge.
+3. Click the dot, ask a question about visible content, and verify a grounded answer.
+4. Create a supervisor with a clear default purpose; drop it without typing. Confirm the green Watch indicator and an initial response.
+5. Change to another app and confirm periodic checks pause; return and wait 45 seconds.
+6. Right-click the dot → Dismiss. Confirm reminders stop and it disappears.
+7. Deny screen access or use an invalid key and verify a visible, recoverable error. Never include keys or private window contents in a bug report.
+
+Report Mac model/architecture, macOS version, app version, target app, reproduction steps, and a screenshot with private details removed.
+
+## Known limits
+
+Cross-application attachment follows window IDs by polling; it is not a child NSWindow of another process. Maximized windows keep tabs inside the title-bar edge where there is no room above. Protected windows may refuse capture. Tasks provide analysis and suggestions, not automatic typing or clicking. Focus uses app switching, not a semantic classification of distraction. Window-colour sampling is approximate. Intel compilation is verified; runtime behavior still needs a teammate's Intel Mac.

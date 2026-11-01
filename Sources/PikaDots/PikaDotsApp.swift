@@ -30,7 +30,9 @@ final class AttachedSession {
 
 @MainActor
 final class AppController: ObservableObject {
-    let agents = SkillLoader.load()
+    @Published var agents = SkillLoader.load()
+    var onManage: (() -> Void)?
+    private let store = CompanionStore()
     var onAttachment: (() -> Void)?
     @Published var notice = ""
     private let responder: any AgentResponding = OpenAIResponder()
@@ -42,6 +44,7 @@ final class AppController: ObservableObject {
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
+        do { agents = try store.load() } catch { notice = "Could not load saved companions: " + error.localizedDescription }
         followTask = Task { [weak self] in
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
@@ -49,6 +52,21 @@ final class AppController: ObservableObject {
             }
         }
     }
+
+    func saveCompanion(_ agent: AgentDefinition) throws {
+        var updated = agents
+        if let i = updated.firstIndex(where: { $0.id == agent.id }) { updated[i] = agent }
+        else { updated.append(agent) }
+        try store.save(updated)
+        close(agent.id)
+        agents = updated
+    }
+    func deleteCompanion(_ id: String) throws {
+        let updated = agents.filter { $0.id != id }
+        try store.save(updated)
+        close(id); agents = updated
+    }
+    func manageCompanions() { onManage?() }
 
     func attachToFrontmost(_ agent: AgentDefinition) {
         guard let window = WindowFinder.windows().first else { notice = "Open a window, then drag a dot onto it."; return }
@@ -96,14 +114,17 @@ final class AppController: ObservableObject {
         dotPanel.orderFrontRegardless()
         if state.expanded { panel.makeKeyAndOrderFront(nil) }
         sampleAppearance(state)
-        if ["focus", "chill"].contains(agent.id) {
-            let defaultPurpose = agent.id == "focus" ? "Keep me focused on this application." : "Help me take a two-minute break."
-            if state.prompt.isEmpty { state.prompt = defaultPurpose }
+        if agent.mode == .supervisor {
+            if state.prompt.isEmpty { state.prompt = agent.defaultPurpose }
             state.purpose = state.prompt
             state.expanded = false
             panel.orderOut(nil)
-            monitor.start(agentID: agent.id, targetApp: window.appName) { [weak state] message in
-                state?.response = message; state?.expanded = true
+            if ["focus", "chill"].contains(agent.id) {
+                monitor.start(agentID: agent.id, targetApp: window.appName) { [weak state] message in
+                    state?.response = message; state?.expanded = true
+                }
+            } else {
+                toggleWatch(state)
             }
         }
         onAttachment?()
@@ -204,13 +225,14 @@ final class AppController: ObservableObject {
                 let answer = try await responder.respond(to: request)
                 try Task.checkCancellation()
                 guard session != nil else { return }
-                if answer.trimmingCharacters(in: .whitespacesAndNewlines) != "NO_NUDGE" { state.response = answer; if periodic { state.expanded = true } }
+                if answer.trimmingCharacters(in: .whitespacesAndNewlines) != "NO_NUDGE" { state.response = answer; if periodic || state.agent.mode == .supervisor { state.expanded = true } }
                 state.lastChecked = Date().formatted(date: .omitted, time: .shortened)
                 if !periodic && ["focus", "chill"].contains(state.agent.id) {
                     monitor.start(agentID: state.agent.id, targetApp: window.appName) { [weak state] in state?.response = $0 }
                 }
             } catch is CancellationError { } catch {
                 state.response = error.localizedDescription
+                state.expanded = true
                 state.watching = false; session?.watchTask?.cancel()
             }
             if let session { position(session, window: state.window ?? window) }

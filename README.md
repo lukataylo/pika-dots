@@ -49,3 +49,9 @@ The packaged app is ad-hoc signed for local use, not notarized for distribution.
 Build 0.3 adds the perched dot and expanding window tab. If you see “Local demo provider,” quit that old process and launch the current packaged app. The drawer displays 0.3 so you can verify the running version.
 
 Version 0.6: a custom transparent status-bar panel replaces the system popover. Focus and Chill start local behavior on drop with default purposes and no typing. Explain opens its prompt. Screenshots and model requests still occur only through Go or Watch. Colour sampling excludes window shadows and stays local.
+
+## Create your own dots (0.8)
+
+Use the + on the shelf to open Companions & Setup. Create or select a companion, edit its skill Markdown, choose Promptable or Supervisor, and save. Custom supervisors require a default purpose and start periodic window checks on drop. Skills and configuration persist in Application Support; editing dismisses the active attachment so it can be reattached with the new settings. The secure setup field stores each teammate’s own key in their Mac’s Keychain.
+
+Download the universal team test package from the v0.8.0 release. See [team testing instructions](docs/TEAM_TESTING.md). Use `scripts/package-release.sh` to rebuild the package; set PIKA_SIGN_IDENTITY to a local signing certificate to sign with Developer ID. No secrets are bundled.

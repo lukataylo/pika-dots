@@ -2,6 +2,7 @@ import Foundation
 
 struct LocalConfiguration {
     static func value(_ name: String) -> String? {
+        if name == "OPENAI_API_KEY", let value = KeychainConfiguration.read(), !value.isEmpty { return value }
         if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty { return value }
         let candidates = [
             URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(".env.local"),

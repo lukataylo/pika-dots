@@ -1,11 +1,17 @@
 import AppKit
 
+enum AgentMode: String, Codable, CaseIterable {
+    case promptable, supervisor
+}
+
 struct AgentDefinition: Identifiable, Equatable {
     let id: String
     let name: String
     let color: NSColor
     let summary: String
     let skillText: String
+    var mode: AgentMode = .promptable
+    var defaultPurpose: String = ""
 }
 
 struct WindowContext {
@@ -36,7 +42,7 @@ struct SkillLoader {
          ("explain", "Explain", NSColor.systemPurple, "A fresh pair of eyes")].map { id, name, color, summary in
             let url = Bundle.module.url(forResource: id, withExtension: "md", subdirectory: "Skills")
             let text = url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
-            return AgentDefinition(id: id, name: name, color: color, summary: summary, skillText: text)
+            return AgentDefinition(id: id, name: name, color: color, summary: summary, skillText: text, mode: id == "explain" ? .promptable : .supervisor, defaultPurpose: id == "focus" ? "Keep me focused on this application." : id == "chill" ? "Help me take a two-minute break." : "")
         }
     }
 }

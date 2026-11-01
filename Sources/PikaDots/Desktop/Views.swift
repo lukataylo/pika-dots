@@ -17,10 +17,13 @@ struct RosterView: View {
                     onDrop: { app.attach(agent, at: $0) },
                     onClick: { app.attachToFrontmost(agent) })
             }
+            Button { app.manageCompanions() } label: { Image(systemName: "plus").font(.system(size: 12)).frame(width: 20, height: 28) }.buttonStyle(.plain).help("Create or edit companions")
         }
         .padding(.horizontal, 18).padding(.vertical, 12)
         .padding(5)
         .contextMenu {
+            Button("Create or edit companions…", systemImage: "sparkles") { app.manageCompanions() }
+            Divider()
             Button("Stop all sessions", systemImage: "pause.circle") { app.stopSession() }
             Divider()
             Button("Quit Pika Dots", systemImage: "power") { NSApp.terminate(nil) }
