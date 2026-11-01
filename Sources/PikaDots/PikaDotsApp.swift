@@ -1,9 +1,16 @@
 import SwiftUI
 
 @main
-struct PikaDotsApp: App {
-    @NSApplicationDelegateAdaptor(StatusBarController.self) private var delegate
-    var body: some Scene { Settings { EmptyView() } }
+enum PikaDotsApp {
+    @MainActor
+    static func main() {
+        let application = NSApplication.shared
+        let delegate = StatusBarController()
+        application.delegate = delegate
+        application.setActivationPolicy(.accessory)
+        application.run()
+        withExtendedLifetime(delegate) {}
+    }
 }
 
 final class CompanionPanel: NSPanel {
