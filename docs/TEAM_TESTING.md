@@ -1,8 +1,8 @@
-# Pika Dots 0.9.2 — teammate testing
+# Pika Dots 0.9.3 — teammate testing
 
 ## Install
 
-Download PikaDots-0.9.2-universal.zip from this repository's v0.9.2 GitHub release. Unzip, move Pika Dots.app to Applications, and open it. macOS 14 or later is required. The same package includes Apple Silicon and Intel executables. Quit older versions first.
+Download PikaDots-0.9.3-universal.zip from this repository's v0.9.3 GitHub release. Unzip, move Pika Dots.app to Applications, and open it. macOS 14 or later is required. The same package includes Apple Silicon and Intel executables. Quit older versions first.
 
 This is a Developer ID signed hackathon test build, not a notarized release. macOS may block its first launch. If you trust this team's build, use System Settings → Privacy & Security → Open Anyway after attempting to open it. Do not disable Gatekeeper. Building locally from source is another option.
 
@@ -41,6 +41,6 @@ Report Mac model/architecture, macOS version, app version, target app, reproduct
 
 Cross-application attachment follows window IDs by polling; it is not a child NSWindow of another process. Maximized windows keep tabs inside the title-bar edge where there is no room above. Protected windows may refuse capture. Tasks provide analysis and suggestions, not automatic typing or clicking. Focus uses app switching, not a semantic classification of distraction. Window-colour sampling is approximate. Intel compilation is verified; runtime behavior still needs a teammate's Intel Mac.
 
-Version 0.9.2 routes all replies through notifications rather than an attached response box. Use the gear → Notifications → Test to check delivery. Cats are 2× larger. If alerts are disabled, a compact corner banner appears for five seconds.
+Version 0.9.3 routes all replies through notifications rather than an attached response box. Use the gear → Notifications → Test to check delivery. Cats are 2× larger. If alerts are disabled, a compact corner banner appears for five seconds.
 
-Version 0.9.2 keeps only the cat on the window by default. Click to set a purpose; right-click for supervision, settings, and dismissal. Click elsewhere or press Escape to hide the input.
+Version 0.9.3 keeps only the cat on the window by default. Click to set a purpose; right-click for supervision, settings, and dismissal. Click elsewhere or press Escape to hide the input.

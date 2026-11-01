@@ -51,6 +51,8 @@ private struct ShelfCompanion: View {
             Text(agent.name).font(.system(size: 9, weight: .medium, design: .rounded))
                 .foregroundStyle(.primary)
                 .shadow(color: Color(nsColor: .windowBackgroundColor), radius: 2)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onClick)
         }.frame(width: 48)
             .onHover { hovering = $0 }
             .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.65), value: hovering)
@@ -88,9 +90,12 @@ struct PerchedDot: View {
         DraggableDot(agent: state.agent, onDrop: onDrop, onClick: toggle)
             .frame(width: 40, height: 40)
             .padding(.horizontal, 7).padding(.top, 4).padding(.bottom, 2)
-            .background(WindowTabShape().fill(Color(nsColor: state.windowColor)))
             .overlay(alignment: .topTrailing) {
                 if state.watching { Circle().fill(.green).frame(width: 4, height: 4).padding(5) }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                // The purpose pill collapses on send, so the cat carries the "thinking" state.
+                if state.busy { ProgressView().controlSize(.mini).padding(2) }
             }
             .contextMenu {
                 Button(state.expanded ? "Hide purpose" : "Set purpose", action: toggle)
@@ -129,6 +134,8 @@ struct TaskBubble: View {
             TextField("Give me a purpose…", text: $state.prompt)
                 .textFieldStyle(.plain).font(.system(size: 11))
                 .onSubmit { if !state.busy { submit() } }
+                // Borderless non-activating panels can drop the field editor's Return action.
+                .onKeyPress(.return) { if !state.busy { submit() }; return .handled }
             if state.busy { ProgressView().controlSize(.mini) }
             else {
                 Button(action: submit) { Image(systemName: "arrow.up").font(.system(size: 10, weight: .semibold)) }
