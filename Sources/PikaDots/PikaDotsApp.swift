@@ -37,6 +37,8 @@ final class AppController: ObservableObject {
     @Published var notice = ""
     private let responder: any AgentResponding = OpenAIResponder()
     private let monitor = SessionMonitor()
+    private var monitorOwner: String?
+    private let nudges = NudgePresenter()
     @Published private var sessions: [String: AttachedSession] = [:]
     var attachedCount: Int { sessions.count }
     func attachedApp(_ id: String) -> String? { sessions[id]?.state.window?.appName }
@@ -115,14 +117,24 @@ final class AppController: ObservableObject {
         if state.expanded { panel.makeKeyAndOrderFront(nil) }
         sampleAppearance(state)
         if agent.mode == .supervisor {
+            if ["focus", "chill"].contains(agent.id) {
+                let opposite = agent.id == "focus" ? "chill" : "focus"
+                if let previous = sessions[opposite] {
+                    previous.watchTask?.cancel(); previous.task?.cancel(); previous.state.watching = false
+                    previous.state.response = "Paused while the other companion takes over."
+                }
+            }
             if state.prompt.isEmpty { state.prompt = agent.defaultPurpose }
             state.purpose = state.prompt
             state.expanded = false
             panel.orderOut(nil)
             if ["focus", "chill"].contains(agent.id) {
-                monitor.start(agentID: agent.id, targetApp: window.appName) { [weak state] message in
+                monitorOwner = agent.id
+                monitor.start(agentID: agent.id, targetApp: window.appName) { [weak self, weak state] message in
                     state?.response = message; state?.expanded = true
+                    self?.nudges.show(message, agent: agent)
                 }
+                if agent.id == "focus" { toggleWatch(state) }
             } else {
                 toggleWatch(state)
             }
@@ -189,7 +201,7 @@ final class AppController: ObservableObject {
         guard let session = sessions[state.agent.id] else { return }
         if state.watching {
             state.watching = false; session.watchTask?.cancel(); session.task?.cancel()
-            if ["focus", "chill"].contains(state.agent.id) { monitor.stop() }
+            if monitorOwner == state.agent.id { monitor.stop(); monitorOwner = nil; nudges.dismiss() }
             return
         }
         guard !state.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -225,10 +237,17 @@ final class AppController: ObservableObject {
                 let answer = try await responder.respond(to: request)
                 try Task.checkCancellation()
                 guard session != nil else { return }
-                if answer.trimmingCharacters(in: .whitespacesAndNewlines) != "NO_NUDGE" { state.response = answer; if periodic || state.agent.mode == .supervisor { state.expanded = true } }
+                if answer.trimmingCharacters(in: .whitespacesAndNewlines) != "NO_NUDGE" {
+                    state.response = answer
+                    if periodic || state.agent.mode == .supervisor { state.expanded = true; nudges.show(answer, agent: state.agent) }
+                }
                 state.lastChecked = Date().formatted(date: .omitted, time: .shortened)
                 if !periodic && ["focus", "chill"].contains(state.agent.id) {
-                    monitor.start(agentID: state.agent.id, targetApp: window.appName) { [weak state] in state?.response = $0 }
+                    monitorOwner = state.agent.id
+                    monitor.start(agentID: state.agent.id, targetApp: window.appName) { [weak self, weak state] message in
+                        state?.response = message; state?.expanded = true
+                        if let state { self?.nudges.show(message, agent: state.agent) }
+                    }
                 }
             } catch is CancellationError { } catch {
                 state.response = error.localizedDescription
@@ -239,12 +258,12 @@ final class AppController: ObservableObject {
         }
     }
     private func close(_ id: String) {
-        if id == "focus" || id == "chill" { monitor.stop() }
+        if monitorOwner == id { monitor.stop(); monitorOwner = nil; nudges.dismiss() }
         sessions[id]?.task?.cancel(); sessions[id]?.watchTask?.cancel()
         sessions[id]?.panel.close(); sessions[id]?.dotPanel.close(); sessions[id] = nil
     }
     func stopSession() {
-        monitor.stop()
+        monitor.stop(); monitorOwner = nil; nudges.dismiss()
         for session in sessions.values { session.task?.cancel(); session.watchTask?.cancel(); session.state.watching = false; session.state.response = "Session stopped." }
     }
 }

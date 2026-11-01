@@ -71,3 +71,48 @@ final class CompanionStoreTests: XCTestCase {
         XCTAssertTrue(try store.load().isEmpty)
     }
 }
+
+@MainActor
+final class SupervisionTests: XCTestCase {
+    func testFocusNudgesSwitchAwayAndRespectsCooldown() async throws {
+        let monitor = SessionMonitor(interval: .milliseconds(5), cooldown: 10, currentApp: { "Safari" })
+        var messages: [String] = []
+        monitor.start(agentID: "focus", targetApp: "Notes") { messages.append($0) }
+        try await Task.sleep(for: .milliseconds(60))
+        monitor.stop()
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages.first?.contains("Safari") == true)
+    }
+    func testFocusStaysQuietInTargetApp() async throws {
+        let monitor = SessionMonitor(interval: .milliseconds(5), currentApp: { "Chrome" })
+        var count = 0
+        monitor.start(agentID: "focus", targetApp: "Chrome") { _ in count += 1 }
+        try await Task.sleep(for: .milliseconds(40)); monitor.stop()
+        XCTAssertEqual(count, 0)
+    }
+    func testChillNudgesTypingAndCompletesExactlyOnce() async throws {
+        let monitor = SessionMonitor(interval: .milliseconds(5), breakLength: 0.05, cooldown: 10, keyboardIdle: { 0 })
+        var messages: [String] = []
+        monitor.start(agentID: "chill", targetApp: "Chrome") { messages.append($0) }
+        try await Task.sleep(for: .milliseconds(120)); monitor.stop()
+        XCTAssertEqual(messages.filter { $0.contains("keyboard") }.count, 1)
+        XCTAssertEqual(messages.filter { $0.contains("Break complete") }.count, 1)
+    }
+    func testStopPreventsReminders() async throws {
+        let monitor = SessionMonitor(interval: .milliseconds(20), breakLength: 0.01, keyboardIdle: { 0 })
+        var count = 0
+        monitor.start(agentID: "chill", targetApp: "Chrome") { _ in count += 1 }
+        monitor.stop()
+        try await Task.sleep(for: .milliseconds(60))
+        XCTAssertEqual(count, 0)
+    }
+    func testStartingChillReplacesFocus() async throws {
+        let monitor = SessionMonitor(interval: .milliseconds(5), breakLength: 0.02, currentApp: { "Safari" }, keyboardIdle: { 100 })
+        var messages: [String] = []
+        monitor.start(agentID: "focus", targetApp: "Chrome") { messages.append($0) }
+        monitor.start(agentID: "chill", targetApp: "Chrome") { messages.append($0) }
+        try await Task.sleep(for: .milliseconds(60)); monitor.stop()
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages.first?.contains("Break complete") == true)
+    }
+}

@@ -1,8 +1,8 @@
-# Pika Dots 0.8 — teammate testing
+# Pika Dots 0.8.1 — teammate testing
 
 ## Install
 
-Download PikaDots-0.8.0-universal.zip from this repository's v0.8.0 GitHub release. Unzip, move Pika Dots.app to Applications, and open it. macOS 14 or later is required. The same package includes Apple Silicon and Intel executables. Quit older versions first.
+Download PikaDots-0.8.1-universal.zip from this repository's v0.8.1 GitHub release. Unzip, move Pika Dots.app to Applications, and open it. macOS 14 or later is required. The same package includes Apple Silicon and Intel executables. Quit older versions first.
 
 This is a Developer ID signed hackathon test build, not a notarized release. macOS may block its first launch. If you trust this team's build, use System Settings → Privacy & Security → Open Anyway after attempting to open it. Do not disable Gatekeeper. Building locally from source is another option.
 
@@ -20,7 +20,7 @@ Click the menu-bar cat, then +, or right-click the shelf → Create or edit comp
 - Set its name, colour, description, and skill Markdown.
 - Promptable: click its attached dot, type a purpose, then Go.
 - Supervisor: supply a default purpose. Dropping a custom supervisor starts an immediate AI check and a check every 45 seconds while that target window is foreground. Background/minimized windows pause checks.
-- Built-in Focus and Chill supervisors use local app-switch reminders and a two-minute break timer. Their Markdown is used when you explicitly ask the AI with Go/Watch.
+- Built-in Focus combines local app-switch reminders with AI window checks. Chill uses a two-minute break timer and keyboard-activity reminders. Their Markdown is used when you explicitly ask the AI with Go/Watch.
 - Saving updates the skill file and dismisses that companion's active attachment. Reattach it to use the new settings.
 
 Skills are ordinary .md files at `~/Library/Application Support/PikaDots/Companions/`, with mode/name/colour in roster.json. Direct file edits load on the next launch. The app editor is the easiest way to update them.
