@@ -34,7 +34,7 @@ final class AttachmentLayoutTests: XCTestCase {
     func testResponseKeepsPurposeTopAndPerchedDotFixed() {
         let window = CGRect(x: 100, y: 100, width: 900, height: 500)
         let screen = CGRect(x: 0, y: 0, width: 1440, height: 1000)
-        let collapsed = AttachmentLayout(window: window, screen: screen, expandedHeight: 40)
+        let collapsed = AttachmentLayout(window: window, screen: screen, expandedHeight: 32)
         let expanded = AttachmentLayout(window: window, screen: screen, expandedHeight: 178)
         XCTAssertEqual(collapsed.dot, expanded.dot)
         XCTAssertEqual(collapsed.tab.minY, window.maxY - 5)

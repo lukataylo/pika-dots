@@ -16,6 +16,8 @@ enum PikaDotsApp {
 final class CompanionPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+    var onResignKey: (() -> Void)?
+    override func resignKey() { super.resignKey(); onResignKey?() }
 }
 
 @MainActor
@@ -103,6 +105,7 @@ final class AppController: ObservableObject {
         dotPanel.level = .floating; dotPanel.isReleasedWhenClosed = false
         dotPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         dotPanel.hidesOnDeactivate = false
+        dotPanel.becomesKeyOnlyIfNeeded = true
         dotPanel.contentView = NSHostingView(rootView: PerchedDot(state: state,
             onDrop: { [weak self] in self?.attach(agent, at: $0) },
             toggle: { [weak self, weak state] in
@@ -110,7 +113,10 @@ final class AppController: ObservableObject {
                 state.expanded.toggle()
                 self.updateAttachments()
                 if state.expanded { self.sessions[agent.id]?.panel.makeKeyAndOrderFront(nil) }
-            }, dismiss: { [weak self] in self?.close(agent.id) }))
+            }, dismiss: { [weak self] in self?.close(agent.id) },
+            settings: { [weak self] in self?.showSettings() },
+            toggleWatch: { [weak self, weak state] in if let state { self?.toggleWatch(state) } }))
+        panel.onResignKey = { [weak state] in state?.expanded = false }
         panel.hasShadow = false
         panel.contentView = NSHostingView(rootView: TaskBubble(state: state,
             submit: { [weak self, weak state] in if let state { self?.submit(state) } },
@@ -174,7 +180,7 @@ final class AppController: ObservableObject {
     private func position(_ session: AttachedSession, window: WindowContext) {
         let rect = WindowFinder.appRect(window.bounds)
         let visible = (NSScreen.screens.first { $0.frame.contains(NSPoint(x: rect.midX, y: rect.midY)) } ?? NSScreen.main)?.visibleFrame ?? rect
-        let height: CGFloat = 40
+        let height: CGFloat = 32
         let layout = AttachmentLayout(window: rect, screen: visible, expandedHeight: height)
         if session.panel.frame != layout.tab { session.panel.setFrame(layout.tab, display: true) }
         if session.dotPanel.frame != layout.dot { session.dotPanel.setFrame(layout.dot, display: true) }

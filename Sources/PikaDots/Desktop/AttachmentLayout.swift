@@ -4,12 +4,10 @@ struct AttachmentLayout {
     let tab: CGRect
     let dot: CGRect
     init(window: CGRect, screen: CGRect, expandedHeight: CGFloat) {
-        let tabX = max(screen.minX + 52, min(window.midX - 124, screen.maxX - 280))
-        // Share ONE window-relative anchor. Screen-clamping each panel separately
-        // made the input and character drift apart on maximized windows.
-        let hasRoomAbove = window.maxY + 46 <= screen.maxY
-        let seamY = hasRoomAbove ? window.maxY - 5 : window.maxY - 46
-        tab = CGRect(x: tabX, y: seamY - max(0, expandedHeight - 40), width: 280, height: expandedHeight)
-        dot = CGRect(x: tabX - 52, y: seamY, width: 54, height: 46)
+        let dotX = max(screen.minX, min(window.midX - 27, screen.maxX - 54))
+        let tabX = max(screen.minX, min(dotX + 52, screen.maxX - 240))
+        let seamY = window.maxY + 46 <= screen.maxY ? window.maxY - 5 : window.maxY - 46
+        tab = CGRect(x: tabX, y: seamY - max(0, expandedHeight - 32), width: 240, height: expandedHeight)
+        dot = CGRect(x: dotX, y: seamY, width: 54, height: 46)
     }
 }

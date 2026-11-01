@@ -82,6 +82,8 @@ struct PerchedDot: View {
     let onDrop: (NSPoint) -> Void
     let toggle: () -> Void
     let dismiss: () -> Void
+    let settings: () -> Void
+    let toggleWatch: () -> Void
     var body: some View {
         DraggableDot(agent: state.agent, onDrop: onDrop, onClick: toggle)
             .frame(width: 40, height: 40)
@@ -92,6 +94,9 @@ struct PerchedDot: View {
             }
             .contextMenu {
                 Button(state.expanded ? "Hide purpose" : "Set purpose", action: toggle)
+                Button(state.watching ? "Pause supervision" : "Start supervision", action: toggleWatch)
+                Button("Settings…", action: settings)
+                Divider()
                 Button("Dismiss \(state.agent.name)", systemImage: "xmark.circle", action: dismiss)
             }
             .help("\(state.agent.name) · click to expand, right-click to dismiss")
@@ -120,24 +125,20 @@ struct TaskBubble: View {
     let settings: () -> Void
     let toggleWatch: () -> Void
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 7) {
-                TextField("Purpose…", text: $state.prompt)
-                    .textFieldStyle(.plain).font(.system(size: 11))
-                    .onSubmit { if !state.busy { submit() } }
-                if state.busy { ProgressView().controlSize(.mini) }
-                else { Button(action: submit) { Image(systemName: "arrow.up.circle.fill") }.buttonStyle(.plain).help("Send this window to OpenAI") }
-                Button(action: toggleWatch) { Image(systemName: state.watching ? "pause.circle.fill" : "eye") }
-                    .buttonStyle(.plain).foregroundStyle(state.watching ? Color.green : Color.secondary)
-                    .help(state.watching ? "Stop watching" : "Watch this window every 45 seconds")
-                Button { state.expanded = false } label: { Image(systemName: "chevron.down").font(.system(size: 8)) }.buttonStyle(.plain).help("Collapse")
-                Button(action: close) { Image(systemName: "xmark").font(.system(size: 8)) }.buttonStyle(.plain).help("Dismiss companion")
+        HStack(spacing: 8) {
+            TextField("Give me a purpose…", text: $state.prompt)
+                .textFieldStyle(.plain).font(.system(size: 11))
+                .onSubmit { if !state.busy { submit() } }
+            if state.busy { ProgressView().controlSize(.mini) }
+            else {
+                Button(action: submit) { Image(systemName: "arrow.up").font(.system(size: 10, weight: .semibold)) }
+                    .buttonStyle(.plain).help("Send")
             }
-            .padding(.horizontal, 18).frame(height: 40)
-            .background(WindowTabShape().fill(Color(nsColor: state.windowColor)))
-
-        }.frame(width: 280)
-            .environment(\.colorScheme, state.windowIsDark ? .dark : .light)
-            .onExitCommand { state.expanded = false }
+        }
+        .padding(.horizontal, 12).frame(width: 240, height: 32)
+        .background(Color(nsColor: state.windowColor), in: Capsule())
+        .overlay(Capsule().strokeBorder(.primary.opacity(0.07)))
+        .environment(\.colorScheme, state.windowIsDark ? .dark : .light)
+        .onExitCommand { state.expanded = false }
     }
 }
