@@ -42,7 +42,7 @@ final class AppController: ObservableObject {
         NSApplication.shared.setActivationPolicy(.accessory)
         followTask = Task { [weak self] in
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
                 self?.updateAttachments()
             }
         }
@@ -93,6 +93,25 @@ final class AppController: ObservableObject {
         position(sessions[agent.id]!, window: window)
         dotPanel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
+        sampleAppearance(state)
+    }
+
+    private func sampleAppearance(_ state: BubbleState) {
+        guard CGPreflightScreenCaptureAccess(), let window = state.window else { return }
+        Task { [weak state] in
+            guard let data = try? await WindowCapture.capture(window),
+                  let bitmap = NSBitmapImageRep(data: data) else { return }
+            var samples: [(NSColor, CGFloat)] = []
+            for x in stride(from: bitmap.pixelsWide / 5, to: bitmap.pixelsWide * 4 / 5, by: max(1, bitmap.pixelsWide / 30)) {
+                guard let c = bitmap.colorAt(x: x, y: min(8, bitmap.pixelsHigh - 1))?.usingColorSpace(.deviceRGB), c.alphaComponent > 0.9 else { continue }
+                samples.append((c, c.redComponent * 0.2126 + c.greenComponent * 0.7152 + c.blueComponent * 0.0722))
+            }
+            samples.sort { $0.1 < $1.1 }
+            guard !samples.isEmpty else { return }
+            let sample = samples[samples.count / 2]
+            state?.windowColor = sample.0
+            state?.windowIsDark = sample.1 < 0.5
+        }
     }
 
     private func purposeKey(_ agent: AgentDefinition, _ window: WindowContext) -> String {

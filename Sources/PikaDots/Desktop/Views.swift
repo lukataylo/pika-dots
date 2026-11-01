@@ -16,7 +16,7 @@ struct RosterView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("pika dots").font(.system(size: 25, weight: .bold, design: .rounded)).tracking(-0.8)
-                    Text("A little company for your day. · 0.3").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("A little company for your day. · 0.4").font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Menu {
@@ -135,6 +135,8 @@ final class BubbleState: ObservableObject {
     @Published var response = ""
     @Published var busy = false
     @Published var expanded = true
+    @Published var windowColor: NSColor = .windowBackgroundColor
+    @Published var windowIsDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     @Published var watching = false
     @Published var activity = ""
     @Published var lastChecked = ""
@@ -177,21 +179,13 @@ struct TaskBubble: View {
     let toggleWatch: () -> Void
     var body: some View {
         VStack(spacing: 0) {
-            if !state.response.isEmpty {
-                ScrollView {
-                    Text(state.response).font(.system(size: 12)).textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading).padding(14)
-                }.frame(height: 132)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal, 16).padding(.bottom, 6)
-            }
             VStack(spacing: 6) {
                 HStack(spacing: 8) {
                     TextField("Purpose in \(state.window?.appName ?? "this window")…", text: $state.prompt)
                         .textFieldStyle(.plain).font(.system(size: 12, weight: .medium))
                         .onSubmit { if !state.busy { submit() } }
                         .padding(.horizontal, 10).padding(.vertical, 7)
-                        .background(.white.opacity(0.07), in: Capsule())
+                        .background(Color.primary.opacity(0.065), in: Capsule())
                     if state.busy { ProgressView().controlSize(.mini) }
                     else { Button(action: submit) { Image(systemName: "arrow.up.circle.fill").font(.system(size: 19)) }.buttonStyle(.plain).help("Send this window and purpose to OpenAI") }
                     Button(action: close) { Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)) }.buttonStyle(.plain).foregroundStyle(.secondary).help("Detach companion")
@@ -206,9 +200,18 @@ struct TaskBubble: View {
                 }.font(.system(size: 9)).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 27).padding(.top, 10).padding(.bottom, 8)
-            .background(WindowTabShape().fill(Color(nsColor: NSColor(calibratedWhite: 0.14, alpha: 0.98))))
+            .background(WindowTabShape().fill(Color(nsColor: state.windowColor)))
+            if !state.response.isEmpty {
+                ScrollView {
+                    Text(state.response).font(.system(size: 12)).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                }.frame(height: 132)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16).padding(.bottom, 6)
+            }
+
         }
         .frame(width: 430)
-        .environment(\.colorScheme, .dark)
+        .environment(\.colorScheme, state.windowIsDark ? .dark : .light)
     }
 }
