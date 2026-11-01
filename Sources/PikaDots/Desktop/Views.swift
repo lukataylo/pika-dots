@@ -46,12 +46,12 @@ private struct ShelfCompanion: View {
     var body: some View {
         VStack(spacing: 3) {
             DraggableDot(agent: agent, onDrop: onDrop, onClick: onClick)
-                .frame(width: 20, height: 20)
+                .frame(width: 40, height: 40)
                 .offset(y: hovering && !reduceMotion ? -2 : 0)
             Text(agent.name).font(.system(size: 9, weight: .medium, design: .rounded))
                 .foregroundStyle(.primary)
                 .shadow(color: Color(nsColor: .windowBackgroundColor), radius: 2)
-        }.frame(width: 34)
+        }.frame(width: 48)
             .onHover { hovering = $0 }
             .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.65), value: hovering)
             .help("\(agent.name) · \(agent.summary)")
@@ -84,7 +84,7 @@ struct PerchedDot: View {
     let dismiss: () -> Void
     var body: some View {
         DraggableDot(agent: state.agent, onDrop: onDrop, onClick: toggle)
-            .frame(width: 20, height: 20)
+            .frame(width: 40, height: 40)
             .padding(.horizontal, 7).padding(.top, 4).padding(.bottom, 2)
             .background(WindowTabShape().fill(Color(nsColor: state.windowColor)))
             .overlay(alignment: .topTrailing) {
@@ -135,18 +135,7 @@ struct TaskBubble: View {
             }
             .padding(.horizontal, 18).frame(height: 40)
             .background(WindowTabShape().fill(Color(nsColor: state.windowColor)))
-            if state.permissionNeeded {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Screen access needed", systemImage: "rectangle.dashed.badge.record").font(.system(size: 11, weight: .semibold))
-                    Text("Allow access to understand this window.").font(.system(size: 10)).foregroundStyle(.secondary)
-                    HStack { Button("Open settings", action: settings); Spacer(); Button("Retry", action: submit) }.font(.system(size: 10))
-                }.padding(12).frame(height: 100)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10)).padding(.horizontal, 6).padding(.bottom, 8)
-            } else if !state.response.isEmpty {
-                ScrollView { Text(state.response).font(.system(size: 11)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }
-                    .frame(height: 132).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-                    .padding(.horizontal, 6).padding(.bottom, 6)
-            }
+
         }.frame(width: 280)
             .environment(\.colorScheme, state.windowIsDark ? .dark : .light)
             .onExitCommand { state.expanded = false }

@@ -59,3 +59,7 @@ Download the universal team test package from the v0.8.0 release. See [team test
 ## Permissions and artwork (0.9)
 
 The shelf has a soft rounded background and a gear button. Settings can request screen access, refresh its status, open the macOS permission pane, and restart the app. Permission failures have a small Settings/Retry card. macOS permission approval remains a user action. The three generated character PNGs are bundled in Resources/Characters; see docs/CHARACTER_ARTWORK.md for prompts.
+
+## Compact notifications (0.9.1)
+
+Attached windows no longer show response/error boxes. Updates use native notifications capped at 14 words / 100 characters, with a five-second corner banner fallback when disabled. The gear includes notification status, Enable, and Test. Cat views are 40 points across shelf, dragging, and attachment.

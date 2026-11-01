@@ -30,16 +30,16 @@ final class SessionMonitor {
                 do { try await Task.sleep(for: interval); try Task.checkCancellation() } catch { return }
                 if agentID == "chill" {
                     if Date().timeIntervalSince(start) >= breakLength {
-                        onMessage("Break complete. Come back gently when you’re ready."); return
+                        onMessage("Break complete. Ready when you are."); return
                     }
                     if keyboardIdle() < 3, Date().timeIntervalSince(lastNudge) >= cooldown {
                         lastNudge = Date()
-                        onMessage("Your keyboard’s active. Give it a little rest — this is your break.")
+                        onMessage("Rest your keyboard. Enjoy your break.")
                     }
                 } else if agentID == "focus", let targetApp, let active = currentApp(), active != targetApp,
                           Date().timeIntervalSince(lastNudge) >= cooldown {
                     lastNudge = Date()
-                    onMessage("You’ve switched to \(active). Ready to return to \(targetApp)?")
+                    onMessage("Back to \(targetApp)?")
                 }
             }
         }

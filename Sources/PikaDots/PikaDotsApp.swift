@@ -71,6 +71,9 @@ final class AppController: ObservableObject {
     }
     func manageCompanions() { onManage?() }
     func showSettings() { onSettings?() }
+    func testNotification() {
+        if let agent = agents.first { nudges.show("You’re all set.", agent: agent) }
+    }
 
     func attachToFrontmost(_ agent: AgentDefinition) {
         guard let window = WindowFinder.windows().first else { notice = "Open a window, then drag a dot onto it."; return }
@@ -134,7 +137,7 @@ final class AppController: ObservableObject {
             if ["focus", "chill"].contains(agent.id) {
                 monitorOwner = agent.id
                 monitor.start(agentID: agent.id, targetApp: window.appName) { [weak self, weak state] message in
-                    state?.response = message; state?.expanded = true
+                    state?.response = message
                     self?.nudges.show(message, agent: agent)
                 }
                 if agent.id == "focus" { toggleWatch(state) }
@@ -171,7 +174,7 @@ final class AppController: ObservableObject {
     private func position(_ session: AttachedSession, window: WindowContext) {
         let rect = WindowFinder.appRect(window.bounds)
         let visible = (NSScreen.screens.first { $0.frame.contains(NSPoint(x: rect.midX, y: rect.midY)) } ?? NSScreen.main)?.visibleFrame ?? rect
-        let height: CGFloat = session.state.permissionNeeded ? 148 : session.state.response.isEmpty ? 40 : 178
+        let height: CGFloat = 40
         let layout = AttachmentLayout(window: rect, screen: visible, expandedHeight: height)
         if session.panel.frame != layout.tab { session.panel.setFrame(layout.tab, display: true) }
         if session.dotPanel.frame != layout.dot { session.dotPanel.setFrame(layout.dot, display: true) }
@@ -208,7 +211,7 @@ final class AppController: ObservableObject {
             return
         }
         guard !state.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            state.response = "Set a purpose first, then press Watch."; return
+            nudges.show("Set a purpose first.", agent: state.agent); return
         }
         state.watching = true
         state.activity = "Starting · checks every 45s"
@@ -228,7 +231,7 @@ final class AppController: ObservableObject {
     private func submit(_ state: BubbleState, periodic: Bool = false) {
         let prompt = state.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !state.busy, let window = state.window, let session = sessions[state.agent.id] else { return }
-        state.busy = true; state.permissionNeeded = false; state.purpose = prompt; if !periodic { state.response = "" }
+        state.busy = true; state.expanded = false; state.permissionNeeded = false; state.purpose = prompt; if !periodic { state.response = "" }
         UserDefaults.standard.set(prompt, forKey: purposeKey(state.agent, window))
         session.task = Task { [weak self, weak session, state] in
             guard let self else { return }
@@ -242,20 +245,21 @@ final class AppController: ObservableObject {
                 guard session != nil else { return }
                 if answer.trimmingCharacters(in: .whitespacesAndNewlines) != "NO_NUDGE" {
                     state.response = answer
-                    if periodic || state.agent.mode == .supervisor { state.expanded = true; nudges.show(answer, agent: state.agent) }
+                    nudges.show(answer, agent: state.agent)
                 }
                 state.lastChecked = Date().formatted(date: .omitted, time: .shortened)
                 if !periodic && ["focus", "chill"].contains(state.agent.id) {
                     monitorOwner = state.agent.id
                     monitor.start(agentID: state.agent.id, targetApp: window.appName) { [weak self, weak state] message in
-                        state?.response = message; state?.expanded = true
+                        state?.response = message
                         if let state { self?.nudges.show(message, agent: state.agent) }
                     }
                 }
             } catch is CancellationError { } catch {
                 state.permissionNeeded = !CGPreflightScreenCaptureAccess()
                 state.response = state.permissionNeeded ? "" : error.localizedDescription
-                state.expanded = true
+                state.expanded = false
+                nudges.show(state.permissionNeeded ? "Enable screen access in Pika settings." : error.localizedDescription, agent: state.agent)
                 state.watching = false; session?.watchTask?.cancel()
             }
             if let session { position(session, window: state.window ?? window) }

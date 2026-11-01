@@ -81,7 +81,7 @@ final class SupervisionTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(60))
         monitor.stop()
         XCTAssertEqual(messages.count, 1)
-        XCTAssertTrue(messages.first?.contains("Safari") == true)
+        XCTAssertTrue(messages.first?.contains("Notes") == true)
     }
     func testFocusStaysQuietInTargetApp() async throws {
         let monitor = SessionMonitor(interval: .milliseconds(5), currentApp: { "Chrome" })
@@ -95,7 +95,7 @@ final class SupervisionTests: XCTestCase {
         var messages: [String] = []
         monitor.start(agentID: "chill", targetApp: "Chrome") { messages.append($0) }
         try await Task.sleep(for: .milliseconds(120)); monitor.stop()
-        XCTAssertEqual(messages.filter { $0.contains("keyboard") }.count, 1)
+        XCTAssertEqual(messages.filter { $0.localizedCaseInsensitiveContains("keyboard") }.count, 1)
         XCTAssertEqual(messages.filter { $0.contains("Break complete") }.count, 1)
     }
     func testStopPreventsReminders() async throws {
@@ -126,5 +126,14 @@ final class CharacterArtworkTests: XCTestCase {
             let bitmap = try XCTUnwrap(NSBitmapImageRep(data: tiff))
             XCTAssertTrue(bitmap.hasAlpha, "\(id) must preserve transparency")
         }
+    }
+}
+
+final class NotificationCopyTests: XCTestCase {
+    func testNotificationIsShortAndSingleLine() {
+        let text = NotificationCopy.short(String(repeating: "longword ", count: 50) + "\nextra")
+        XCTAssertLessThanOrEqual(text.count, 100)
+        XCTAssertLessThanOrEqual(text.split(separator: " ").count, 14)
+        XCTAssertFalse(text.contains("\n"))
     }
 }

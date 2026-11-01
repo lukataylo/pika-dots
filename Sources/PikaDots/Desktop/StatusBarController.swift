@@ -17,7 +17,7 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         item.button?.target = self
         item.button?.action = #selector(toggleShelf)
         self.item = item
-        let shelf = CompanionPanel(contentRect: CGRect(x: 0, y: 0, width: 178, height: 78), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let shelf = CompanionPanel(contentRect: CGRect(x: 0, y: 0, width: 178, height: 98), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         shelf.backgroundColor = .clear; shelf.isOpaque = false; shelf.hasShadow = true
         shelf.level = .popUpMenu; shelf.isReleasedWhenClosed = false
         shelf.contentView = NSHostingView(rootView: RosterView(app: app))
@@ -44,9 +44,11 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         if settings == nil {
             let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 488, height: 340), styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.title = "Pika Dots · Settings"; window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: PermissionsView(manage: { [weak self] in self?.showEditor() }, showShelf: { [weak self] in
+            let host = NSHostingView(rootView: PermissionsView(manage: { [weak self] in self?.showEditor() }, showShelf: { [weak self] in
                 self?.settings?.orderOut(nil); self?.shelf?.orderOut(nil); self?.toggleShelf(); self?.shelf?.makeKeyAndOrderFront(nil)
-            }))
+            }, testNotification: { [weak self] in self?.app.testNotification() }))
+            window.contentView = host
+            window.setContentSize(host.fittingSize)
             window.center(); settings = window
         }
         NSApp.activate(ignoringOtherApps: true); settings?.makeKeyAndOrderFront(nil)
@@ -70,9 +72,9 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         if shelf.isVisible { shelf.orderOut(nil); return }
         let rect = window.convertToScreen(button.convert(button.bounds, to: nil))
         let screen = window.screen?.visibleFrame ?? NSScreen.main!.visibleFrame
-        let width = min(screen.width, CGFloat(app.agents.count) * 48 + 110)
-        shelf.setContentSize(NSSize(width: width, height: 78))
-        shelf.setFrameOrigin(NSPoint(x: max(screen.minX, min(rect.midX - width / 2, screen.maxX - width)), y: rect.minY - 78))
+        let width = min(screen.width, CGFloat(app.agents.count) * 62 + 110)
+        shelf.setContentSize(NSSize(width: width, height: 98))
+        shelf.setFrameOrigin(NSPoint(x: max(screen.minX, min(rect.midX - width / 2, screen.maxX - width)), y: rect.minY - 98))
         shelf.orderFrontRegardless()
     }
 }

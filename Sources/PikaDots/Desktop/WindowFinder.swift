@@ -69,7 +69,7 @@ final class DotDragView: NSView {
         let transform = NSAffineTransform()
         transform.translateX(by: bounds.midX, yBy: bounds.midY)
         transform.rotate(byRadians: angle)
-        let sizeScale: CGFloat = isGhost ? 20.0 / 48 : min(bounds.width, bounds.height) / 48
+        let sizeScale: CGFloat = isGhost ? 40.0 / 48 : min(bounds.width, bounds.height) / 48
         transform.scaleX(by: sizeScale, yBy: sizeScale)
         transform.scaleX(by: stretch * landing * breathe, yBy: landing / sqrt(stretch) / breathe)
         transform.concat()

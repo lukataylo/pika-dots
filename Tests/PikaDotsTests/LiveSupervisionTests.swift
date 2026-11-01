@@ -25,6 +25,6 @@ final class LiveSupervisionTests: XCTestCase {
         XCTAssertTrue(distraction.lowercased().contains("migration"))
         let relaxation = try await OpenAIResponder().respond(to: TaskRequest(sessionID: UUID(), agent: chill, prompt: "I am on a two-minute break but returned to coding. Give one brief reminder to stop working and relax.", window: nil, imageData: fixture("Code editor: App.swift\n\nfunc deployProduction() {\n    runDatabaseMigration()\n}\n\nTODO: finish feature implementation\nBuild running...")))
         XCTAssertFalse(relaxation.isEmpty)
-        XCTAssertTrue(relaxation.lowercased().contains("break") || relaxation.lowercased().contains("relax"))
+        XCTAssertTrue(relaxation.lowercased().contains("break") || relaxation.lowercased().contains("relax"), relaxation)
     }
 }

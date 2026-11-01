@@ -1,9 +1,23 @@
 import SwiftUI
+import UserNotifications
 
 @MainActor
 final class PermissionState: ObservableObject {
+    @Published var notificationStatus = "Checking…"
+    func refreshNotifications() {
+        Task {
+            let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+            notificationStatus = status == .authorized || status == .provisional ? "Allowed" : status == .denied ? "Off — enable in macOS settings" : "Not requested yet"
+        }
+    }
+    func requestNotifications() {
+        Task {
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])
+            refreshNotifications()
+        }
+    }
     @Published var screenAllowed = CGPreflightScreenCaptureAccess()
-    func refresh() { screenAllowed = CGPreflightScreenCaptureAccess() }
+    func refresh() { screenAllowed = CGPreflightScreenCaptureAccess(); refreshNotifications() }
     func request() { CGRequestScreenCaptureAccess(); refresh() }
     func openSettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
@@ -21,6 +35,7 @@ struct PermissionsView: View {
     @StateObject private var permissions = PermissionState()
     let manage: () -> Void
     let showShelf: () -> Void
+    let testNotification: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -43,10 +58,21 @@ struct PermissionsView: View {
             }
             Text("macOS may only show the request once. If it does not appear, open settings and enable Pika Dots. Restart after changing access.").font(.caption).foregroundStyle(.secondary)
             Divider()
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Notifications", systemImage: "bell").font(.headline)
+                    Text(permissions.notificationStatus).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Test", action: testNotification)
+                Button("Enable") { permissions.requestNotifications() }
+                Button("Settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!) }
+            }
             Label("Keyboard activity only — no typed text is recorded.", systemImage: "keyboard").font(.caption)
             Text("Only the attached window is sent to OpenAI when you press Go or enable supervision. No Accessibility or Input Monitoring permission is required.").font(.caption).foregroundStyle(.secondary)
             HStack { Button("Companions & API key…", action: manage); Spacer(); Button("Restart Pika Dots") { permissions.restart() } }
         }.padding(24).frame(width: 440)
+        .onAppear { permissions.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in permissions.refresh() }
     }
 }
