@@ -4,8 +4,10 @@ import SwiftUI
 struct PikaDotsApp: App {
     @StateObject private var controller = AppController()
     var body: some Scene {
-        MenuBarExtra("Pika Dots", systemImage: "circle.hexagongrid.fill") {
+        MenuBarExtra {
             RosterView(app: controller)
+        } label: {
+            Image(nsImage: MenuBarArtwork.image).accessibilityLabel("Pika Dots")
         }.menuBarExtraStyle(.window)
     }
 }
@@ -29,7 +31,9 @@ final class AppController: ObservableObject {
     @Published var notice = ""
     private let responder: any AgentResponding = OpenAIResponder()
     private let monitor = SessionMonitor()
-    private var sessions: [String: AttachedSession] = [:]
+    @Published private var sessions: [String: AttachedSession] = [:]
+    var attachedCount: Int { sessions.count }
+    func attachedApp(_ id: String) -> String? { sessions[id]?.state.window?.appName }
     private var followTask: Task<Void, Never>?
 
     init() {
