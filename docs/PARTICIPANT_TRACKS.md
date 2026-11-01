@@ -1,5 +1,7 @@
 # Parallel participant tracks
 
+Update: the MVP now includes OpenAI Responses integration, ScreenCaptureKit window capture, per-app purposes, up to three attached dots, window following, and stretch/spring animation. Start from current main. The track deliverables below are improvement areas; do not replace working implementations.
+
 Four people: three implementation tracks plus one integrator/demo owner. This document is the handoff; tracks can start simultaneously against the existing contracts. Do not all edit the app entry point.
 
 ## Shared baseline
@@ -9,7 +11,7 @@ Four people: three implementation tracks plus one integrator/demo owner. This do
 - Runtime input: skill text, prompt, window metadata. Future capture must be explicit context, not instructions.
 - AppController owns the selected bubble and invokes the responder. UI state remains on the main actor.
 - Current response contract is one async String, with thrown errors and task cancellation. Keep it stable for the first integration.
-- Runtime dot concurrency is distinct from participant concurrency: the MVP has one bubble and one monitor. Multiple concurrent bubbles are a later feature.
+- Runtime dot concurrency: one attachment per dot, one dot per window, up to three bubbles and one shared Focus/Chill monitor.
 
 ## Participant 1 — Desktop and character interaction
 

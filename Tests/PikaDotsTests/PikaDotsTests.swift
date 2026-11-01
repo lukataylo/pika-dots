@@ -15,3 +15,17 @@ final class PikaDotsTests: XCTestCase {
         XCTAssertTrue(response.contains("Connect an AgentResponding provider"))
     }
 }
+
+final class OpenAIResponseTests: XCTestCase {
+    func testResponseParserSkipsReasoningAndCombinesText() throws {
+        let fixture = Data(#"{"output":[{"type":"reasoning","summary":[]},{"content":[{"type":"output_text","text":"Hello"},{"type":"output_text","text":"Pika"}]}]}"#.utf8)
+        XCTAssertEqual(try OpenAIResponder().responseText(fixture), "Hello\nPika")
+    }
+    func testResponseParserReportsEmptyOutput() {
+        XCTAssertThrowsError(try OpenAIResponder().responseText(Data(#"{"output":[]}"#.utf8)))
+    }
+    func testWindowCoordinateConversionRoundTrips() {
+        let rect = CGRect(x: -400, y: 50, width: 300, height: 200)
+        XCTAssertEqual(WindowFinder.appRect(WindowFinder.appRect(rect)), rect)
+    }
+}

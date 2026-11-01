@@ -13,6 +13,7 @@ struct WindowContext {
     let appName: String
     let title: String
     let bounds: CGRect
+    var ownerPID: pid_t = 0
     var label: String { title.isEmpty ? appName : "\(appName) — \(title)" }
 }
 
@@ -21,6 +22,7 @@ struct TaskRequest {
     let agent: AgentDefinition
     let prompt: String
     let window: WindowContext?
+    var imageData: Data? = nil
 }
 
 protocol AgentResponding {

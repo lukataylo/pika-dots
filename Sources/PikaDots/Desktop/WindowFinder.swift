@@ -1,51 +1,114 @@
 import AppKit
 
 struct WindowFinder {
-    static func window(at point: NSPoint) -> WindowContext? {
-        // CG windows use a top-left origin relative to the primary display.
-        let primaryHeight = CGDisplayBounds(CGMainDisplayID()).height
-        let cgPoint = CGPoint(x: point.x, y: primaryHeight - point.y)
-        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return nil }
-        for info in windows {
+    static func windows() -> [WindowContext] {
+        let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        return list.compactMap { info in
             guard let pid = info[kCGWindowOwnerPID as String] as? Int32,
                   pid != ProcessInfo.processInfo.processIdentifier,
                   let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
                   let raw = info[kCGWindowBounds as String] as? NSDictionary,
-                  let bounds = CGRect(dictionaryRepresentation: raw), bounds.contains(cgPoint),
-                  let id = info[kCGWindowNumber as String] as? UInt32 else { continue }
+                  let bounds = CGRect(dictionaryRepresentation: raw), bounds.width > 80, bounds.height > 60,
+                  let id = info[kCGWindowNumber as String] as? UInt32 else { return nil }
             return WindowContext(windowID: id,
                 appName: info[kCGWindowOwnerName as String] as? String ?? "Application",
-                title: info[kCGWindowName as String] as? String ?? "", bounds: bounds)
+                title: info[kCGWindowName as String] as? String ?? "", bounds: bounds, ownerPID: pid)
         }
-        return nil
     }
+    static func appRect(_ bounds: CGRect) -> CGRect {
+        CGRect(x: bounds.minX, y: CGDisplayBounds(CGMainDisplayID()).height - bounds.maxY, width: bounds.width, height: bounds.height)
+    }
+    static func window(at point: NSPoint) -> WindowContext? {
+        windows().first { appRect($0.bounds).contains(point) }
+    }
+
 }
 
+@MainActor
 final class DotDragView: NSView {
     let color: NSColor
     var onDrop: ((NSPoint) -> Void)?
     private var ghost: NSPanel?
-    init(color: NSColor) { self.color = color; super.init(frame: NSRect(x: 0, y: 0, width: 48, height: 48)) }
+    private var ghostDot: DotDragView?
+    private var animation: Task<Void, Never>?
+    private let birth = Date()
+    private var lastPoint = NSPoint.zero
+    private var stretch: CGFloat = 1
+    private var angle: CGFloat = 0
+    private var isGhost = false
+
+    init(color: NSColor) {
+        self.color = color
+        super.init(frame: NSRect(x: 0, y: 0, width: 48, height: 48))
+        setAccessibilityLabel("Draggable companion")
+        setAccessibilityRole(.button)
+    }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func viewDidMoveToWindow() {
+        animation?.cancel()
+        guard window != nil else { return }
+        animation = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(24)) } catch { return }
+                guard let self else { return }
+                self.stretch += (1 - self.stretch) * 0.12
+                self.needsDisplay = true
+            }
+        }
+    }
     override func draw(_ dirtyRect: NSRect) {
-        color.setFill()
-        NSBezierPath(roundedRect: bounds.insetBy(dx: 5, dy: 5), xRadius: 17, yRadius: 17).fill()
+        let time = Date().timeIntervalSince(birth)
+        let reduced = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let landing = reduced || isGhost ? 1 : 1 - exp(-time * 9) * cos(time * 19) * 0.24
+        let breathe = reduced || isGhost ? 1 : 1 + sin(time * 2.4) * 0.025
+        let blink = !isGhost && time.truncatingRemainder(dividingBy: 4.3) > 4.12
+        NSGraphicsContext.saveGraphicsState()
+        let transform = NSAffineTransform()
+        transform.translateX(by: bounds.midX, yBy: bounds.midY)
+        transform.rotate(byRadians: angle)
+        transform.scaleX(by: stretch * landing * breathe, yBy: landing / sqrt(stretch) / breathe)
+        transform.concat()
+        let body = NSBezierPath()
+        body.move(to: NSPoint(x: -16, y: 7))
+        body.curve(to: NSPoint(x: -14, y: 20), controlPoint1: NSPoint(x: -20, y: 26), controlPoint2: NSPoint(x: -16, y: 25))
+        body.curve(to: NSPoint(x: 13, y: 20), controlPoint1: NSPoint(x: -5, y: 16), controlPoint2: NSPoint(x: 5, y: 16))
+        body.curve(to: NSPoint(x: 17, y: 7), controlPoint1: NSPoint(x: 19, y: 27), controlPoint2: NSPoint(x: 19, y: 17))
+        body.curve(to: NSPoint(x: 0, y: -19), controlPoint1: NSPoint(x: 25, y: -7), controlPoint2: NSPoint(x: 15, y: -19))
+        body.curve(to: NSPoint(x: -16, y: 7), controlPoint1: NSPoint(x: -21, y: -19), controlPoint2: NSPoint(x: -24, y: -2))
+        body.close()
+        color.setFill(); body.fill()
+        NSColor.white.withAlphaComponent(0.14).setFill()
+        NSBezierPath(ovalIn: NSRect(x: -12, y: 6, width: 12, height: 5)).fill()
         NSColor.white.setFill()
-        for x in [19.0, 29.0] { NSBezierPath(roundedRect: NSRect(x: x, y: 21, width: 4, height: 10), xRadius: 2, yRadius: 2).fill() }
+        for x in [-8.0, 4.0] {
+            NSBezierPath(roundedRect: NSRect(x: x, y: blink ? -1 : -5, width: 4.5, height: blink ? 2 : 11), xRadius: 2.25, yRadius: 2.25).fill()
+        }
+        NSColor.systemPink.withAlphaComponent(0.35).setFill()
+        for x in [-14.0, 10.0] { NSBezierPath(ovalIn: NSRect(x: x, y: -8, width: 5, height: 3)).fill() }
+        NSGraphicsContext.restoreGraphicsState()
     }
     override func mouseDown(with event: NSEvent) {
-        let panel = NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.backgroundColor = .clear; panel.isOpaque = false; panel.hasShadow = true
-        panel.level = .floating; panel.ignoresMouseEvents = true
-        panel.contentView = DotDragView(color: color)
-        ghost = panel
+        lastPoint = NSEvent.mouseLocation
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 110, height: 110), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.backgroundColor = .clear; panel.isOpaque = false; panel.hasShadow = false
+        panel.level = .statusBar; panel.ignoresMouseEvents = true
+        let dot = DotDragView(color: color); dot.isGhost = true
+        panel.contentView = dot
+        ghost = panel; ghostDot = dot
     }
     override func mouseDragged(with event: NSEvent) {
         let p = NSEvent.mouseLocation
-        ghost?.setFrameOrigin(NSPoint(x: p.x - 24, y: p.y - 24)); ghost?.orderFrontRegardless()
+        let dx = p.x - lastPoint.x, dy = p.y - lastPoint.y
+        if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            ghostDot?.stretch = min(2.1, 1 + hypot(dx, dy) / 35)
+            if hypot(dx, dy) > 1 { ghostDot?.angle = atan2(dy, dx) }
+        }
+        ghost?.setFrameOrigin(NSPoint(x: p.x - 55, y: p.y - 55))
+        ghost?.orderFrontRegardless()
+        lastPoint = p
     }
     override func mouseUp(with event: NSEvent) {
-        ghost?.close(); ghost = nil
+        ghost?.close(); ghost = nil; ghostDot = nil
         onDrop?(NSEvent.mouseLocation)
     }
 }
