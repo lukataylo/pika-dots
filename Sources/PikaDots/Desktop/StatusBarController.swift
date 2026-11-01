@@ -8,6 +8,7 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
     private var shelf: CompanionPanel?
     private var clickMonitor: Any?
     private var editor: NSWindow?
+    private var settings: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: 25)
@@ -16,11 +17,12 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         item.button?.target = self
         item.button?.action = #selector(toggleShelf)
         self.item = item
-        let shelf = CompanionPanel(contentRect: CGRect(x: 0, y: 0, width: 178, height: 68), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        shelf.backgroundColor = .clear; shelf.isOpaque = false; shelf.hasShadow = false
+        let shelf = CompanionPanel(contentRect: CGRect(x: 0, y: 0, width: 178, height: 78), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        shelf.backgroundColor = .clear; shelf.isOpaque = false; shelf.hasShadow = true
         shelf.level = .popUpMenu; shelf.isReleasedWhenClosed = false
         shelf.contentView = NSHostingView(rootView: RosterView(app: app))
         self.shelf = shelf
+        app.onSettings = { [weak self] in self?.showSettings() }
         app.onManage = { [weak self] in self?.showEditor() }
         if !UserDefaults.standard.bool(forKey: "hasSeenCompanionEditor") || LocalConfiguration.value("OPENAI_API_KEY") == nil {
             showEditor()
@@ -30,6 +32,24 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak shelf] _ in
             Task { @MainActor in shelf?.orderOut(nil) }
         }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { showSettings() }
+        return false
+    }
+
+    private func showSettings() {
+        shelf?.orderOut(nil)
+        if settings == nil {
+            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 488, height: 340), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.title = "Pika Dots · Settings"; window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: PermissionsView(manage: { [weak self] in self?.showEditor() }, showShelf: { [weak self] in
+                self?.settings?.orderOut(nil); self?.shelf?.orderOut(nil); self?.toggleShelf(); self?.shelf?.makeKeyAndOrderFront(nil)
+            }))
+            window.center(); settings = window
+        }
+        NSApp.activate(ignoringOtherApps: true); settings?.makeKeyAndOrderFront(nil)
     }
 
     private func showEditor() {
@@ -50,9 +70,9 @@ final class StatusBarController: NSObject, NSApplicationDelegate {
         if shelf.isVisible { shelf.orderOut(nil); return }
         let rect = window.convertToScreen(button.convert(button.bounds, to: nil))
         let screen = window.screen?.visibleFrame ?? NSScreen.main!.visibleFrame
-        let width = min(screen.width, CGFloat(app.agents.count) * 48 + 70)
-        shelf.setContentSize(NSSize(width: width, height: 68))
-        shelf.setFrameOrigin(NSPoint(x: max(screen.minX, min(rect.midX - width / 2, screen.maxX - width)), y: rect.minY - 68))
+        let width = min(screen.width, CGFloat(app.agents.count) * 48 + 110)
+        shelf.setContentSize(NSSize(width: width, height: 78))
+        shelf.setFrameOrigin(NSPoint(x: max(screen.minX, min(rect.midX - width / 2, screen.maxX - width)), y: rect.minY - 78))
         shelf.orderFrontRegardless()
     }
 }

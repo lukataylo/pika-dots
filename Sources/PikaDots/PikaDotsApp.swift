@@ -32,6 +32,7 @@ final class AttachedSession {
 final class AppController: ObservableObject {
     @Published var agents = SkillLoader.load()
     var onManage: (() -> Void)?
+    var onSettings: (() -> Void)?
     private let store = CompanionStore()
     var onAttachment: (() -> Void)?
     @Published var notice = ""
@@ -69,6 +70,7 @@ final class AppController: ObservableObject {
         close(id); agents = updated
     }
     func manageCompanions() { onManage?() }
+    func showSettings() { onSettings?() }
 
     func attachToFrontmost(_ agent: AgentDefinition) {
         guard let window = WindowFinder.windows().first else { notice = "Open a window, then drag a dot onto it."; return }
@@ -110,6 +112,7 @@ final class AppController: ObservableObject {
         panel.contentView = NSHostingView(rootView: TaskBubble(state: state,
             submit: { [weak self, weak state] in if let state { self?.submit(state) } },
             close: { [weak self] in self?.close(agent.id) },
+            settings: { [weak self] in self?.showSettings() },
             toggleWatch: { [weak self, weak state] in if let state { self?.toggleWatch(state) } }))
         sessions[agent.id] = AttachedSession(state: state, panel: panel, dotPanel: dotPanel)
         position(sessions[agent.id]!, window: window)
@@ -168,7 +171,7 @@ final class AppController: ObservableObject {
     private func position(_ session: AttachedSession, window: WindowContext) {
         let rect = WindowFinder.appRect(window.bounds)
         let visible = (NSScreen.screens.first { $0.frame.contains(NSPoint(x: rect.midX, y: rect.midY)) } ?? NSScreen.main)?.visibleFrame ?? rect
-        let height: CGFloat = session.state.response.isEmpty ? 40 : 178
+        let height: CGFloat = session.state.permissionNeeded ? 148 : session.state.response.isEmpty ? 40 : 178
         let layout = AttachmentLayout(window: rect, screen: visible, expandedHeight: height)
         if session.panel.frame != layout.tab { session.panel.setFrame(layout.tab, display: true) }
         if session.dotPanel.frame != layout.dot { session.dotPanel.setFrame(layout.dot, display: true) }
@@ -225,7 +228,7 @@ final class AppController: ObservableObject {
     private func submit(_ state: BubbleState, periodic: Bool = false) {
         let prompt = state.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !state.busy, let window = state.window, let session = sessions[state.agent.id] else { return }
-        state.busy = true; state.purpose = prompt; if !periodic { state.response = "" }
+        state.busy = true; state.permissionNeeded = false; state.purpose = prompt; if !periodic { state.response = "" }
         UserDefaults.standard.set(prompt, forKey: purposeKey(state.agent, window))
         session.task = Task { [weak self, weak session, state] in
             guard let self else { return }
@@ -250,7 +253,8 @@ final class AppController: ObservableObject {
                     }
                 }
             } catch is CancellationError { } catch {
-                state.response = error.localizedDescription
+                state.permissionNeeded = !CGPreflightScreenCaptureAccess()
+                state.response = state.permissionNeeded ? "" : error.localizedDescription
                 state.expanded = true
                 state.watching = false; session?.watchTask?.cancel()
             }

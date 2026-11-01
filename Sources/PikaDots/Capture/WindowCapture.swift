@@ -5,7 +5,7 @@ struct WindowCapture {
     static func capture(_ context: WindowContext) async throws -> Data {
         guard CGPreflightScreenCaptureAccess() else {
             CGRequestScreenCaptureAccess()
-            throw PikaError.message("Allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording, then restart the app. Only the selected window is sent when you press Go.")
+            throw PikaError.message("Screen access is off. Open Pika Dots settings to enable it, then retry.")
         }
         let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
         guard let window = content.windows.first(where: { $0.windowID == context.windowID }) else {

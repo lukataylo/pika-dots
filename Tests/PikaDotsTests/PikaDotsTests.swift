@@ -116,3 +116,15 @@ final class SupervisionTests: XCTestCase {
         XCTAssertTrue(messages.first?.contains("Break complete") == true)
     }
 }
+
+@MainActor
+final class CharacterArtworkTests: XCTestCase {
+    func testBundledCatPosesLoadWithAlpha() throws {
+        for id in ["focus", "chill", "explain"] {
+            let image = try XCTUnwrap(CharacterArtwork.image(for: id))
+            let tiff = try XCTUnwrap(image.tiffRepresentation)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(data: tiff))
+            XCTAssertTrue(bitmap.hasAlpha, "\(id) must preserve transparency")
+        }
+    }
+}

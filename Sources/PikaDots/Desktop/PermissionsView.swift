@@ -1,0 +1,52 @@
+import SwiftUI
+
+@MainActor
+final class PermissionState: ObservableObject {
+    @Published var screenAllowed = CGPreflightScreenCaptureAccess()
+    func refresh() { screenAllowed = CGPreflightScreenCaptureAccess() }
+    func request() { CGRequestScreenCaptureAccess(); refresh() }
+    func openSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+    }
+    func restart() {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
+            if error == nil { Task { @MainActor in NSApp.terminate(nil) } }
+        }
+    }
+}
+
+struct PermissionsView: View {
+    @StateObject private var permissions = PermissionState()
+    let manage: () -> Void
+    let showShelf: () -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Label("Pika Dots settings", systemImage: "gearshape").font(.system(size: 21, weight: .bold, design: .rounded))
+                Spacer()
+                Button("Show shelf", action: showShelf).font(.caption)
+            }
+            HStack {
+                Image(systemName: permissions.screenAllowed ? "checkmark.circle.fill" : "rectangle.dashed.badge.record").foregroundStyle(permissions.screenAllowed ? Color.green : Color.orange)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Screen Recording").font(.headline)
+                    Text(permissions.screenAllowed ? "Allowed on this Mac" : "Needed to understand the attached window").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Check again") { permissions.refresh() }
+            }
+            HStack {
+                Button("Request access") { permissions.request() }
+                Button("Open macOS settings") { permissions.openSettings() }
+            }
+            Text("macOS may only show the request once. If it does not appear, open settings and enable Pika Dots. Restart after changing access.").font(.caption).foregroundStyle(.secondary)
+            Divider()
+            Label("Keyboard activity only — no typed text is recorded.", systemImage: "keyboard").font(.caption)
+            Text("Only the attached window is sent to OpenAI when you press Go or enable supervision. No Accessibility or Input Monitoring permission is required.").font(.caption).foregroundStyle(.secondary)
+            HStack { Button("Companions & API key…", action: manage); Spacer(); Button("Restart Pika Dots") { permissions.restart() } }
+        }.padding(24).frame(width: 440)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in permissions.refresh() }
+    }
+}

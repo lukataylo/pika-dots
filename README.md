@@ -55,3 +55,7 @@ Version 0.6: a custom transparent status-bar panel replaces the system popover. 
 Use the + on the shelf to open Companions & Setup. Create or select a companion, edit its skill Markdown, choose Promptable or Supervisor, and save. Custom supervisors require a default purpose and start periodic window checks on drop. Skills and configuration persist in Application Support; editing dismisses the active attachment so it can be reattached with the new settings. The secure setup field stores each teammate’s own key in their Mac’s Keychain.
 
 Download the universal team test package from the v0.8.0 release. See [team testing instructions](docs/TEAM_TESTING.md). Use `scripts/package-release.sh` to rebuild the package; set PIKA_SIGN_IDENTITY to a local signing certificate to sign with Developer ID. No secrets are bundled.
+
+## Permissions and artwork (0.9)
+
+The shelf has a soft rounded background and a gear button. Settings can request screen access, refresh its status, open the macOS permission pane, and restart the app. Permission failures have a small Settings/Retry card. macOS permission approval remains a user action. The three generated character PNGs are bundled in Resources/Characters; see docs/CHARACTER_ARTWORK.md for prompts.

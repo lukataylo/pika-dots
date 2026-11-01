@@ -27,6 +27,7 @@ struct WindowFinder {
 @MainActor
 final class DotDragView: NSView {
     let color: NSColor
+    var artwork: NSImage?
     var onDrop: ((NSPoint) -> Void)?
     var onClick: (() -> Void)?
     private var didDrag = false
@@ -72,6 +73,11 @@ final class DotDragView: NSView {
         transform.scaleX(by: sizeScale, yBy: sizeScale)
         transform.scaleX(by: stretch * landing * breathe, yBy: landing / sqrt(stretch) / breathe)
         transform.concat()
+        if let artwork {
+            artwork.draw(in: NSRect(x: -24, y: -24, width: 48, height: 48), from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: false, hints: [.interpolation: NSImageInterpolation.high])
+            NSGraphicsContext.restoreGraphicsState()
+            return
+        }
         let body = NSBezierPath()
         body.move(to: NSPoint(x: -16, y: 7))
         body.curve(to: NSPoint(x: -14, y: 20), controlPoint1: NSPoint(x: -20, y: 26), controlPoint2: NSPoint(x: -16, y: 25))
@@ -97,7 +103,7 @@ final class DotDragView: NSView {
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 110, height: 110), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.backgroundColor = .clear; panel.isOpaque = false; panel.hasShadow = false
         panel.level = .statusBar; panel.ignoresMouseEvents = true
-        let dot = DotDragView(color: color); dot.isGhost = true
+        let dot = DotDragView(color: color); dot.isGhost = true; dot.artwork = artwork
         panel.contentView = dot
         ghost = panel; ghostDot = dot
     }

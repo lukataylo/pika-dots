@@ -4,8 +4,8 @@ struct DraggableDot: NSViewRepresentable {
     let agent: AgentDefinition
     let onDrop: (NSPoint) -> Void
     var onClick: (() -> Void)? = nil
-    func makeNSView(context: Context) -> DotDragView { let v = DotDragView(color: agent.color); v.onDrop = onDrop; v.onClick = onClick; return v }
-    func updateNSView(_ view: DotDragView, context: Context) { view.onDrop = onDrop; view.onClick = onClick }
+    func makeNSView(context: Context) -> DotDragView { let v = DotDragView(color: agent.color); v.onDrop = onDrop; v.onClick = onClick; v.artwork = CharacterArtwork.image(for: agent.id); return v }
+    func updateNSView(_ view: DotDragView, context: Context) { view.onDrop = onDrop; view.onClick = onClick; view.artwork = CharacterArtwork.image(for: agent.id) }
 }
 
 struct RosterView: View {
@@ -18,9 +18,12 @@ struct RosterView: View {
                     onClick: { app.attachToFrontmost(agent) })
             }
             Button { app.manageCompanions() } label: { Image(systemName: "plus").font(.system(size: 12)).frame(width: 20, height: 28) }.buttonStyle(.plain).help("Create or edit companions")
+            Button { app.showSettings() } label: { Image(systemName: "gearshape").font(.system(size: 12)).frame(width: 20, height: 28) }.buttonStyle(.plain).help("Settings & permissions")
         }
-        .padding(.horizontal, 18).padding(.vertical, 12)
-        .padding(5)
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(.primary.opacity(0.07)))
+        .padding(6)
         .contextMenu {
             Button("Create or edit companions…", systemImage: "sparkles") { app.manageCompanions() }
             Divider()
@@ -62,6 +65,7 @@ final class BubbleState: ObservableObject {
     @Published var purpose = ""
     @Published var response = ""
     @Published var busy = false
+    @Published var permissionNeeded = false
     @Published var expanded = false
     @Published var windowColor: NSColor = .windowBackgroundColor
     @Published var windowIsDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -113,6 +117,7 @@ struct TaskBubble: View {
     @ObservedObject var state: BubbleState
     let submit: () -> Void
     let close: () -> Void
+    let settings: () -> Void
     let toggleWatch: () -> Void
     var body: some View {
         VStack(spacing: 0) {
@@ -130,7 +135,14 @@ struct TaskBubble: View {
             }
             .padding(.horizontal, 18).frame(height: 40)
             .background(WindowTabShape().fill(Color(nsColor: state.windowColor)))
-            if !state.response.isEmpty {
+            if state.permissionNeeded {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Screen access needed", systemImage: "rectangle.dashed.badge.record").font(.system(size: 11, weight: .semibold))
+                    Text("Allow access to understand this window.").font(.system(size: 10)).foregroundStyle(.secondary)
+                    HStack { Button("Open settings", action: settings); Spacer(); Button("Retry", action: submit) }.font(.system(size: 10))
+                }.padding(12).frame(height: 100)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10)).padding(.horizontal, 6).padding(.bottom, 8)
+            } else if !state.response.isEmpty {
                 ScrollView { Text(state.response).font(.system(size: 11)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }
                     .frame(height: 132).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                     .padding(.horizontal, 6).padding(.bottom, 6)

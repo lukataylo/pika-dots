@@ -1,8 +1,8 @@
-# Pika Dots 0.8.1 — teammate testing
+# Pika Dots 0.9.0 — teammate testing
 
 ## Install
 
-Download PikaDots-0.8.1-universal.zip from this repository's v0.8.1 GitHub release. Unzip, move Pika Dots.app to Applications, and open it. macOS 14 or later is required. The same package includes Apple Silicon and Intel executables. Quit older versions first.
+Download PikaDots-0.9.0-universal.zip from this repository's v0.9.0 GitHub release. Unzip, move Pika Dots.app to Applications, and open it. macOS 14 or later is required. The same package includes Apple Silicon and Intel executables. Quit older versions first.
 
 This is a Developer ID signed hackathon test build, not a notarized release. macOS may block its first launch. If you trust this team's build, use System Settings → Privacy & Security → Open Anyway after attempting to open it. Do not disable Gatekeeper. Building locally from source is another option.
 
@@ -10,7 +10,7 @@ This is a Developer ID signed hackathon test build, not a notarized release. mac
 
 The first launch opens Companions & Setup. Enter your own OpenAI API key into the secure field and click Save key. It stays in this Mac's Keychain; no API key is distributed in the app. You need API access and quota for the selected model (default gpt-4.1-mini). The Keychain entry is shared across versions of this app, not across teammates' Macs.
 
-Allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording when it asks. Restart after granting permission if requested. Accessibility and Input Monitoring permissions are not needed: keyboard activity uses idle time, never the characters you type.
+Use the shelf gear → Settings & permissions to request or recheck access. Allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording when it asks. Restart after granting permission if requested. Accessibility and Input Monitoring permissions are not needed: keyboard activity uses idle time, never the characters you type.
 
 ## Create and edit
 

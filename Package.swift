@@ -5,7 +5,7 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [.executable(name: "PikaDots", targets: ["PikaDots"])],
     targets: [
-        .executableTarget(name: "PikaDots", resources: [.copy("Resources/Skills")]),
+        .executableTarget(name: "PikaDots", resources: [.copy("Resources/Skills"), .copy("Resources/Characters")]),
         .testTarget(name: "PikaDotsTests", dependencies: ["PikaDots"])
     ],
     swiftLanguageModes: [.v5]
