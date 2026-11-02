@@ -1,69 +1,115 @@
 # Pika Dots
 
-A native macOS menu-bar roster of tiny, skill-backed companions. Drag a dot onto a Chrome, Notes, or other standard application window, give it an app-specific purpose above the window, and ask OpenAI about that window.
+A native macOS menu-bar app with a shelf of tiny cat companions. Drag a cat onto any window (Chrome, Notes, or another standard app), tell it what you're doing, and it helps with that window: keeping you on task, nudging you to take a break, explaining what's on screen, or carrying out tasks in Chrome.
+
+Current version: **0.11.0**. See the [release notes](docs/RELEASE_0.11.0.md).
 
 ## Download
 
-[Download the compiled Mac app](https://github.com/lukataylo/pika-dots/releases/tag/v0.11.0). Unzip, move Pika Dots.app to Applications, and open it. Universal Apple Silicon/Intel, macOS 14+. Developer ID signed; not notarized. Each teammate supplies their own API key in Settings.
+[Download the compiled Mac app (v0.11.0)](https://github.com/lukataylo/pika-dots/releases/tag/v0.11.0). Unzip it, move **Pika Dots.app** to Applications, and open it.
 
-## Run
+- Universal (Apple Silicon and Intel), macOS 14+
+- Developer ID signed, not notarized
+- No API keys or personal data are bundled; each person adds their own key in Settings
 
-Requires macOS 14+, Swift 6 command-line tools.
+## Companions
+
+| Cat | Mode | What it does |
+|---|---|---|
+| **Focus** (orange) | Supervisor | Runs a focus session (15, 25, 50 min or open-ended) on the attached window. Checks whether you're on task and nudges you back when you drift; shows a summary at the end. |
+| **Chill** (teal) | Supervisor | Starts a short break (1, 2, 5 or 10 min) and tells you when it's over. |
+| **Explain** (purple) | Promptable | Ask a question about the attached window; it looks at that window and replies briefly. |
+| **Actions** (blue) | Promptable | Carries out a task in your Google Chrome tab, one step at a time: search, navigate, compare, fill forms, take notes. Asks before anything consequential. |
+
+Use **+** on the shelf to create your own companion: write its skill in Markdown, choose Promptable or Supervisor, and save. Skills and settings are stored in `~/Library/Application Support/PikaDots/`.
+
+## Use
+
+1. Click the menu-bar icon to open the shelf of cats. Right-click the shelf for **Stop all** or **Quit**.
+2. Drag a cat onto a window (or click its name to attach it to the topmost window). The cat sits on the window's edge and follows it as you move, resize, or reorder windows.
+3. Click the cat to open a small purpose pill. Type (or speak) its purpose or question and press the arrow. Purposes are remembered per companion and app.
+4. Right-click the cat for status, **Check now**, pause/start supervision, settings, and dismissing it.
+5. Answers to your questions appear in a small reply card next to the cat. Periodic nudges arrive as short native notifications (at most 14 words); if notifications are off, a small corner banner is shown instead.
+
+Up to one cat per window; different cats can watch different windows at once.
+
+### Focus details
+
+- Window content is checked against your purpose about every 15 seconds while the window is in front; background and minimized windows are skipped.
+- YouTube window titles are checked every two seconds. Optional settings can show a dismissible pause screen and, after repeated warnings, close the YouTube tab (Safari, Chrome, Brave, Edge, and Arc).
+- Focus can use OpenAI's **Decisions** API for fast yes/no on-task checks, or the **Responses** API. Switch to Responses in the companion's settings if you don't have Decisions access.
+
+### Actions details
+
+- Works only in **Google Chrome**. Turn on **View → Developer → Allow JavaScript from Apple Events** in Chrome first.
+- Asks for approval before outward actions such as sending, posting, submitting, purchasing, or deleting. It stops for logins, CAPTCHAs, and payment details so you can take over.
+- Outward actions are capped at 10 per day.
+- Under **Allowed websites** in its skill, list domains where it may act without asking.
+- **YOLO** mode (the bolt button) runs without asking. Payments still ask.
+- Keeps short task notes from recent runs (last 24 hours) locally, so follow-up tasks can build on them.
+
+### Voice and sounds
+
+Click the microphone to talk to a cat instead of typing. Audio is transcribed and not stored. Cats can play short synthesized sounds (mrrp, meow, yowl); change or remove them in the `## Sounds` section of a skill.
+
+## Permissions
+
+macOS will ask for these the first time they're needed:
+
+| Permission | Needed for |
+|---|---|
+| Screen & System Audio Recording | Seeing the attached window (all companions) |
+| Automation (Apple Events) | Actions in Chrome; closing YouTube tabs in Focus |
+| Microphone and Speech Recognition | Voice input (optional) |
+| Notifications | Short replies and nudges (optional; banner fallback) |
+
+The gear button on the shelf shows permission status and can request access, open System Settings, and restart the app. Approving a permission is always your own action in macOS.
+
+## Configure
+
+Add your OpenAI API key in **Settings** (gear button); it's stored in your Mac's Keychain. For development you can instead put `OPENAI_API_KEY` in an ignored `.env.local` file at the repository root or in `~/Library/Application Support/PikaDots/.env.local`, or set it as an environment variable. Keys are read at request time and never included in the app bundle.
+
+Optional settings in the same places:
+
+- `OPENAI_MODEL`: model for replies and Actions (default `gpt-4.1-mini`)
+- `OPENAI_DECISIONS_MODEL`: model for Decisions checks (default `gpt-6-luna`)
+
+## Privacy
+
+- A screenshot of the attached window is sent to OpenAI only for a question, a supervision check, or an Actions step.
+- Typing activity uses a local idle-time signal only; typed text, key codes, and clipboard contents are never recorded.
+- Purposes, custom skills, and Actions notes stay on your Mac.
+
+## Build from source
+
+Requires macOS 14+ and the Swift 6 command-line tools.
 
 ```sh
 ./scripts/build-app.sh
 open "dist/Pika Dots.app"
 ```
 
-Or open Package.swift in Xcode. The app lives in the menu bar, not the Dock. Quit any previous build before launching a new one.
+Or open `Package.swift` in Xcode. The app lives in the menu bar, not the Dock; quit any running copy before launching a new build.
 
-## Configure
-
-Keep `OPENAI_API_KEY` in the ignored `.env.local` at the repository root. The packaged app finds it when launched from `dist/`. For an app moved elsewhere, use `~/Library/Application Support/PikaDots/.env.local`, or launch with the environment variable set. Keys are read at request time, never included in the app bundle. Optional `OPENAI_MODEL` overrides `gpt-4.1-mini`.
-
-## Use
-
-1. Open the roster from the menu-bar icon. The menu opens a rounded shelf of small named companions. Right-click it for Stop all or Quit.
-2. Drag a character onto a window, or click its name to attach to the topmost external window.
-3. Enter its purpose in the tab above the window and press Go. Purposes are remembered per companion and application.
-4. Click the perched dot to expand or collapse the purpose tab. Drag the dot to move it to another window.
-5. On the first request, allow Pika Dots in System Settings → Privacy & Security → Screen & System Audio Recording. Restart if macOS requests it.
-6. Go sends a single selected-window image and your task to OpenAI. Watch sends an immediate request and checks every 15 seconds while that target window is foreground; background or minimized targets pause checks.
-7. Watching shows a green indicator. Click Watch again, detach the dot, or choose Stop all to stop pending checks. Keyboard monitoring uses a local idle-time signal; it never records typed text, key codes, or clipboard contents.
-8. Focus starts local app-switch reminders; Chill starts a two-minute timer. These modes replace one another. Temporary errors show a status and retry. Right-click the cat for status and controls.
-
-Companions may attach to different windows. Each window gets one dot and a purpose field. Dots stretch along the direction of dragging, spring into place, blink, and breathe; reduced-motion settings disable stretching and idle motion.
-
-## Scope and limitations
-
-Chrome, Notes, and standard macOS apps use the same window-ID based path; there is no app-specific browser extension or Accessibility permission requirement. Protected content may not be capturable. A minimized window or a window on another Space hides its dot; restoring the same window restores it. Closing a window leaves its attachment dormant until you reattach that dot. Full-screen/maximized windows place the field just inside the top edge when there is no space above. Window following uses a short polling loop, not a native child-window relationship across processes.
-
-Focus combines local browser/app signals with purpose-aware AI checks. Actions can operate a Google Chrome tab using its browser controls; its skill and selected approval mode govern consequential actions. Other companions analyze the attached window. Actions retains recent task notes locally for follow-up work. Live model/API availability and macOS permissions still need checking on each teammate’s Mac.
-
-## Team and checks
-
-See [participant tracks](docs/PARTICIPANT_TRACKS.md). The baseline now includes real capture/runtime and window following; participants should extend these existing components rather than add parallel implementations.
+Run the tests (optional live API tests are skipped without a key):
 
 ```sh
 swift test
 ```
 
-The packaged app is ad-hoc signed for local use, not notarized for distribution.
+To make a release package, run `scripts/package-release.sh`. Set `PIKA_SIGN_IDENTITY` to a Developer ID certificate to sign it.
 
-Build 0.3 adds the perched dot and expanding window tab. If you see “Local demo provider,” quit that old process and launch the current packaged app. The drawer displays 0.3 so you can verify the running version.
+## Scope and limitations
 
-Version 0.6: a custom transparent status-bar panel replaces the system popover. Focus and Chill start local behavior on drop with default purposes and no typing. Explain opens its prompt. Screenshots and model requests still occur only through Go or Watch. Colour sampling excludes window shadows and stays local.
+- All apps use the same window-ID-based capture; there's no browser extension, and no Accessibility permission is needed. Protected content may not be capturable.
+- Cats follow windows using a short polling loop, not a native cross-process child-window link. A minimized window, or one on another Space, hides its cat until it comes back. Closing a window leaves its cat inactive until you reattach it.
+- For full-screen windows, the purpose pill sits just inside the top edge.
+- Live API calls, Chrome automation, microphone permissions, and Intel runtime behavior haven't been verified end to end in 0.11.0. Check them on each teammate's Mac.
 
-## Create your own dots (0.8)
+## More docs
 
-Use the + on the shelf to open Companions & Setup. Create or select a companion, edit its skill Markdown, choose Promptable or Supervisor, and save. Custom supervisors require a default purpose and start periodic window checks on drop. Skills and configuration persist in Application Support; editing dismisses the active attachment so it can be reattached with the new settings. The secure setup field stores each teammate’s own key in their Mac’s Keychain.
-
-Download the universal team test package from the v0.8.0 release. See [team testing instructions](docs/TEAM_TESTING.md). Use `scripts/package-release.sh` to rebuild the package; set PIKA_SIGN_IDENTITY to a local signing certificate to sign with Developer ID. No secrets are bundled.
-
-## Permissions and artwork (0.9)
-
-The shelf has a soft rounded background and a gear button. Settings can request screen access, refresh its status, open the macOS permission pane, and restart the app. Permission failures have a small Settings/Retry card. macOS permission approval remains a user action. The three generated character PNGs are bundled in Resources/Characters; see docs/CHARACTER_ARTWORK.md for prompts.
-
-## Compact notifications (0.9.1)
-
-Attached windows no longer show response/error boxes. Updates use native notifications capped at 14 words / 100 characters, with a five-second corner banner fallback when disabled. The gear includes notification status, Enable, and Test. Cat views are 40 points across shelf, dragging, and attachment.
+- [Team testing instructions](docs/TEAM_TESTING.md)
+- [Participant tracks](docs/PARTICIPANT_TRACKS.md): extend the existing components rather than adding parallel implementations
+- [Supervision test results](docs/SUPERVISION_TEST_RESULTS.md)
+- [Character artwork and prompts](docs/CHARACTER_ARTWORK.md), plus design sheets in `docs/design/`
+- Release notes: `docs/RELEASE_*.md`
