@@ -4,6 +4,12 @@ A native macOS menu-bar app with a shelf of tiny cat companions. Drag a cat onto
 
 Current version: **0.11.0**. See the [release notes](docs/RELEASE_0.11.0.md).
 
+## Demo
+
+[![Pika Dots demo video](https://img.youtube.com/vi/Agd_avP2Ve8/maxresdefault.jpg)](https://youtu.be/Agd_avP2Ve8)
+
+▶️ [Watch the demo on YouTube](https://youtu.be/Agd_avP2Ve8) (1:32). It shows the cat companions in action: dragging cats from the menu-bar shelf onto windows, setting a purpose, and getting focus nudges, explanations and Chrome actions.
+
 ## Download
 
 [Download the compiled Mac app (v0.11.0)](https://github.com/lukataylo/pika-dots/releases/tag/v0.11.0). Unzip it, move **Pika Dots.app** to Applications, and open it.
