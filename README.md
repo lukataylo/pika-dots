@@ -13,7 +13,7 @@ Current version: **0.11.0**. See the [release notes](docs/RELEASE_0.11.0.md).
 
 ## Demo
 
-[![Pika Dots demo video](https://img.youtube.com/vi/Agd_avP2Ve8/maxresdefault.jpg)](https://youtu.be/Agd_avP2Ve8)
+[![Pika Dots demo video](docs/readme/demo-thumbnail.jpg)](https://youtu.be/Agd_avP2Ve8)
 
 ▶️ [Watch the demo on YouTube](https://youtu.be/Agd_avP2Ve8) (1:32)
 
