@@ -1,5 +1,12 @@
 # Pika Dots
 
+<p align="center">
+  <img src="docs/readme/focus.png" width="96" alt="Focus cat">
+  <img src="docs/readme/chill.png" width="96" alt="Chill cat">
+  <img src="docs/readme/explain.png" width="96" alt="Explain cat">
+  <img src="docs/readme/outreach.png" width="96" alt="Actions cat">
+</p>
+
 A native macOS menu-bar app with a shelf of tiny cat companions. Drag a cat onto any window (Chrome, Notes, or another standard app), tell it what you're doing, and it helps with that window: keeping you on task, nudging you to take a break, explaining what's on screen, or carrying out tasks in Chrome.
 
 Current version: **0.11.0**. See the [release notes](docs/RELEASE_0.11.0.md).
@@ -8,7 +15,17 @@ Current version: **0.11.0**. See the [release notes](docs/RELEASE_0.11.0.md).
 
 [![Pika Dots demo video](https://img.youtube.com/vi/Agd_avP2Ve8/maxresdefault.jpg)](https://youtu.be/Agd_avP2Ve8)
 
-▶️ [Watch the demo on YouTube](https://youtu.be/Agd_avP2Ve8) (1:32). It shows the cat companions in action: dragging cats from the menu-bar shelf onto windows, setting a purpose, and getting focus nudges, explanations and Chrome actions.
+▶️ [Watch the demo on YouTube](https://youtu.be/Agd_avP2Ve8) (1:32)
+
+We're big fans of context bots, but we thought we could do one better. Pika Dots are **context-specific, task-bound agents**: you attach each cat to a specific window, then ask it to carry out tasks for you or supervise your work.
+
+In the demo, AGI is finally here and someone has to control it, so we're organising a judo showdown at Wembley Stadium between Sam, Dario and Elon.
+
+1. **Focus cat on the window.** The Focus companion uses OpenAI's Decisions API to classify what's on screen, such as the current Chrome tab, as *on task* or *distracting*.
+2. **Actions cat sends the invites.** We ask the Actions cat to draft and send invites to Elon, Dario and Sam in Chrome. It works through the task step by step while we carry on setting up the event description.
+3. **Getting distracted.** We drift off to YouTube for some cat videos. *Meow, meow.* The Focus cat notices and tells us to get back to work.
+
+Each pet stays bound to its own window and task, and you can pick up wherever it left off.
 
 ## Download
 
@@ -20,12 +37,12 @@ Current version: **0.11.0**. See the [release notes](docs/RELEASE_0.11.0.md).
 
 ## Companions
 
-| Cat | Mode | What it does |
-|---|---|---|
-| **Focus** (orange) | Supervisor | Runs a focus session (15, 25, 50 min or open-ended) on the attached window. Checks whether you're on task and nudges you back when you drift; shows a summary at the end. |
-| **Chill** (teal) | Supervisor | Starts a short break (1, 2, 5 or 10 min) and tells you when it's over. |
-| **Explain** (purple) | Promptable | Ask a question about the attached window; it looks at that window and replies briefly. |
-| **Actions** (blue) | Promptable | Carries out a task in your Google Chrome tab, one step at a time: search, navigate, compare, fill forms, take notes. Asks before anything consequential. |
+| | Cat | Mode | What it does |
+|:-:|---|---|---|
+| <img src="docs/readme/focus.png" width="72" alt="Focus cat"> | **Focus** (orange) | Supervisor | Runs a focus session (15, 25, 50 min or open-ended) on the attached window. Checks whether you're on task and nudges you back when you drift; shows a summary at the end. |
+| <img src="docs/readme/chill.png" width="72" alt="Chill cat"> | **Chill** (teal) | Supervisor | Starts a short break (1, 2, 5 or 10 min) and tells you when it's over. |
+| <img src="docs/readme/explain.png" width="72" alt="Explain cat"> | **Explain** (purple) | Promptable | Ask a question about the attached window; it looks at that window and replies briefly. |
+| <img src="docs/readme/outreach.png" width="72" alt="Actions cat"> | **Actions** (blue) | Promptable | Carries out a task in your Google Chrome tab, one step at a time: search, navigate, compare, fill forms, take notes. Asks before anything consequential. |
 
 Use **+** on the shelf to create your own companion: write its skill in Markdown, choose Promptable or Supervisor, and save. Skills and settings are stored in `~/Library/Application Support/PikaDots/`.
 
